@@ -1,0 +1,16 @@
+import 'package:image_picker/image_picker.dart';
+
+class CompanyData {
+  static final CompanyData _instance = CompanyData._internal();
+  factory CompanyData() => _instance;
+  CompanyData._internal();
+
+  String name = "Organic";
+  String industry = "Healthcare";
+  String overview = "A leading manufacturer and distributor of high-quality pharmaceutical products, dedicated to improving public health through innovative healthcare solutions";
+  String location = "Cairo,Egypt";
+  String website = "www.organic.com";
+  
+  XFile? logoImage;
+  XFile? licenseImage;
+}

@@ -7,6 +7,13 @@ import 'features/company/screens/company_register_step3_screen.dart';
 import 'features/company/screens/company_approval_screen.dart';
 import 'features/company/screens/company_main_screen.dart';
 
+import 'features/student/screens/splash_screen.dart';
+import 'features/student/screens/login_screen.dart';
+import 'features/student/screens/student_register.dart';
+import 'features/student/screens/home_screen.dart';
+import 'features/student/screens/profile_screen.dart';
+import 'features/student/screens/applications_screen.dart';
+
 void main() {
   runApp(MyApp());
 }
@@ -31,16 +38,22 @@ class MyApp extends StatelessWidget {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          // البداية من الشاشة الأولى
-          initialRoute: '/company_register_step1',
+          // البداية من شاشة السبلاش
+          initialRoute: '/splash',
           
-          // تعريف جميع الشاشات هنا (الربط في main)
           routes: {
-            '/company_register_step1': (context) => CompanyRegisterScreen(),
-            '/company_register_step2': (context) => CompanyRegisterStep2Screen(),
-            '/company_register_step3': (context) => CompanyRegisterStep3Screen(),
-            '/company_approval': (context) => CompanyApprovalScreen(),
-            '/company_main': (context) => CompanyMainScreen(),
+            '/splash': (context) => const SplashScreen(),
+            '/login': (context) => const LoginScreen(),
+            '/student_register': (context) => const StudentRegisterScreen(),
+            '/student_home': (context) => const HomeScreen(userName: 'Student'),
+            '/student_profile': (context) => const ProfileScreen(),
+            '/student_applications': (context) => const ApplicationsScreen(),
+            
+            '/company_register_step1': (context) => const CompanyRegisterScreen(),
+            '/company_register_step2': (context) => const CompanyRegisterStep2Screen(),
+            '/company_register_step3': (context) => const CompanyRegisterStep3Screen(),
+            '/company_approval': (context) => const CompanyApprovalScreen(),
+            '/company_main': (context) => const CompanyMainScreen(),
           },
         );
       }

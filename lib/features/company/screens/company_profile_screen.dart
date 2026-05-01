@@ -56,9 +56,21 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                       ),
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => showCompanyNotifications(context),
-                    child: const Icon(Icons.notifications, color: Color(0xFFFDA00C)),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          // Logout to Splash or Login
+                          Navigator.pushNamedAndRemoveUntil(context, '/splash', (route) => false);
+                        },
+                        child: const Icon(Icons.logout, color: Color(0xFF7E848E), size: 22),
+                      ),
+                      const SizedBox(width: 16),
+                      GestureDetector(
+                        onTap: () => showCompanyNotifications(context),
+                        child: const Icon(Icons.notifications, color: Color(0xFFFDA00C)),
+                      ),
+                    ],
                   ),
                 ],
               ),

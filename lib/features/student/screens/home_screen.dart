@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/student_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'job_details_screen.dart';
 import 'login_screen.dart';
@@ -124,6 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildTopHeader(),
+              if (!studentService.isVerified) _buildVerificationBar(),
 
               Expanded(
                 child: ListView(
@@ -703,6 +705,51 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildVerificationBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF9C4), // Light yellow
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.amber.shade200),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isArabic ? "حسابك غير موثق" : "Unverified Account",
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
+                ),
+                Text(
+                  isArabic ? "وثق حسابك للتمكن من التقديم" : "Verify now to apply for jobs",
+                  style: const TextStyle(fontSize: 11, color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+            },
+            style: TextButton.styleFrom(
+              backgroundColor: primaryBlueLight,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text(isArabic ? "وثق الآن" : "Verify", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/student_service.dart';
 import 'company_profile_screen.dart';
 import '../../localization.dart';
 import '../../widgets/language_toggle.dart';
@@ -138,8 +139,12 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
             // زر التقديم (يتغير عند الضغط)
             ElevatedButton(
               onPressed: () {
-                setState(() => _isApplied = true);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocale.tr(context, "Applied Successfully!"))));
+                if (studentService.isVerified) {
+                  setState(() => _isApplied = true);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocale.tr(context, "Applied Successfully!"))));
+                } else {
+                  _showVerificationDialog(context);
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: _isApplied ? const Color(0xFF7E848E) : const Color(0xFF229BD8),
@@ -161,8 +166,38 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
           ],
         ),
       ),
-      // شريط التنقل السفلي
-   
+    );
+  }
+            
+  void _showVerificationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.verified_user_outlined, color: Colors.orange),
+            const SizedBox(width: 10),
+            Text(AppLocale.tr(context, "Verification Required")),
+          ],
+        ),
+        content: Text(AppLocale.tr(context, "You must verify your student account first to be able to apply for jobs.")),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(AppLocale.tr(context, "Maybe Later"), style: const TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Navigation to profile or directly to verify
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocale.tr(context, "Go to Profile to verify"))));
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF229BD8), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            child: Text(AppLocale.tr(context, "Verify Now"), style: const TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 

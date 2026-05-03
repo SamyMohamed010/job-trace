@@ -40,11 +40,13 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       'statusStudent': isAr ? "طالب" : "Student",
       'statusGrad': isAr ? "خريج" : "Graduate",
       'facLabel': isAr ? "الكلية" : "Faculty",
-      'majorLabel': isAr ? "التخصص" : "Major",
+      'majorLabel': isAr ? "التخصص" : "Specialty",
+      'programLabel': isAr ? "البرنامج الدراسي (اختياري)" : "Academic Program (Optional)",
       'yearLabel': isAr ? "السنة الدراسية" : "Study Year",
       'gradYearLabel': isAr ? "سنة التخرج" : "Graduation Year",
       'skillsLabel': isAr ? "المهارات" : "Skills",
       'cvLabel': isAr ? "رفع السيرة الذاتية" : "Upload CV",
+      'verificationLabel': isAr ? "إثبات قيد / شهادة تخرج" : "Univ. Verification",
       'imgLabel': isAr ? "صورة الملف" : "Profile Image",
       'saveBtn': isAr ? "حفظ واستمرار" : "Save & Continue",
       'studentYears': isAr
@@ -55,6 +57,35 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
           ? ["كلية الحاسبات", "كلية الهندسة", "كلية العلوم", "كلية التجارة"]
           : ["Computers & Info", "Engineering", "Science", "Commerce"],
     };
+  }
+
+  String? selectedProgram;
+  String? verificationFileName;
+  Uint8List? verificationFileData;
+
+  Future<void> _pickVerification() async {
+    bool isAr = appLocalization.locale.languageCode == 'ar';
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'png', 'jpeg'],
+        withData: true,
+      );
+
+      if (result != null) {
+        setState(() {
+          verificationFileName = result.files.single.name;
+          verificationFileData = result.files.single.bytes;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(isAr ? "تم اختيار ملف التوثيق" : "Verification file selected")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(isAr ? "فشل اختيار الملف" : "Failed to pick file")),
+      );
+    }
   }
 
   Future<void> _pickCV() async {
@@ -203,6 +234,15 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 15),
+                    _buildLabel(content['programLabel']),
+                    Container(
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+                      child: TextField(
+                        onChanged: (val) => setState(() => selectedProgram = val),
+                        decoration: InputDecoration(hintText: isAr ? "مثلاً: فيزياء حاسب" : "e.g. Computer Physics", border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12)),
+                      ),
+                    ),
                     const SizedBox(height: 20),
                     _buildSkillsSection(),
                     const SizedBox(height: 20),
@@ -212,6 +252,12 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                         const SizedBox(width: 10),
                         Expanded(child: _buildUploadArea(title: profileImageName ?? content['imgLabel'], icon: Icons.image_outlined, onTap: _pickProfileImage)),
                       ],
+                    ),
+                    const SizedBox(height: 10),
+                    _buildUploadArea(
+                      title: verificationFileName ?? content['verificationLabel'], 
+                      icon: Icons.verified_user_outlined, 
+                      onTap: _pickVerification
                     ),
                     const SizedBox(height: 30),
                     _buildSaveButton(),
@@ -315,11 +361,16 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
             setState(() => isLoading = true);
             await Future.delayed(const Duration(seconds: 1));
             studentService.faculty = selectedFaculty!;
-            studentService.major = selectedMajor ?? "";
-            studentService.year = selectedYear!;
+            studentService.specialty = selectedMajor ?? "";
+            studentService.graduationYear = selectedYear!;
+            studentService.program = selectedProgram;
             studentService.skills = skills;
             studentService.cvFileName = cvFileName;
             if (profileImageBytes != null) studentService.profileImageBytes = profileImageBytes;
+            if (verificationFileData != null) {
+              studentService.verificationFileName = verificationFileName;
+              studentService.verificationFileData = verificationFileData;
+            }
             if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen(userName: widget.userName)));
           } else {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isAr ? "يرجى إكمال البيانات" : "Please complete data"), backgroundColor: Colors.redAccent));

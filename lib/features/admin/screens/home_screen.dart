@@ -1,0 +1,224 @@
+import 'package:flutter/material.dart';
+import '../models/company.dart';
+import '../widgets/company_card.dart';
+import '../widgets/notification_button.dart';
+import 'jobs_screen.dart';
+import 'analytics_screen.dart';
+
+const Color kPrimaryBlue = Color(0xFF229BD8);
+const Color kMainFrameColor = Color(0xFFEBEEF4);
+const Color kGreyText = Color(0xFF7E848E);
+const Color kOrangeAccent = Color(0xFFFDA00C);
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0;
+  bool isArabic = false;
+
+  final List<Widget> _pages = [
+    const JobsScreen(),
+    const AnalyticsScreen(),
+    const CompanyListContent(),
+  ];
+
+  final List<Map<String, String>> _titles = [
+    {"en": "Recent Jobs", "ar": "أحدث الوظائف"},
+    {"en": "Analytics", "ar": "الإحصائيات"},
+    {"en": "Companies", "ar": "الشركات"},
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
+      child: Scaffold(
+        backgroundColor: kMainFrameColor,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          toolbarHeight: 70,
+          title: Row(
+            children: [
+              // اللوجو
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 5)],
+                ),
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    height: 40, width: 40,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.business, color: kPrimaryBlue),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                isArabic
+                    ? _titles[_selectedIndex]["ar"]!
+                    : _titles[_selectedIndex]["en"]!,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            // القائمة المنسدلة للغات
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.language, color: kPrimaryBlue),
+              onSelected: (String value) {
+                setState(() {
+                  isArabic = (value == 'ar');
+                });
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(
+                  value: 'en',
+                  child: Text("English (US)"),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'ar',
+                  child: Text("العربية (مصر)"),
+                ),
+              ],
+            ),
+            CustomNotificationButton(onPressed: () {}),
+            const SizedBox(width: 10),
+          ],
+        ),
+        body: _pages[_selectedIndex],
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: (index) => setState(() => _selectedIndex = index),
+          selectedItemColor: kPrimaryBlue,
+          unselectedItemColor: kGreyText,
+          type: BottomNavigationBarType.fixed,
+          items: [
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.work_outline),
+              label: isArabic ? "الوظائف" : "Jobs",
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.analytics_outlined),
+              label: isArabic ? "التحليلات" : "Analytics",
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.business),
+              label: isArabic ? "الشركات" : "Company",
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CompanyListContent extends StatelessWidget {
+  const CompanyListContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    bool isArabic = Directionality.of(context) == TextDirection.rtl;
+
+    final List<Company> companies = [
+      Company(
+        name: "Amazon",
+        email: "amazon@gmail.com",
+        brandColor: kOrangeAccent,
+        logoUrl: "https://img.icons8.com/color/512/amazon.png",
+        location: isArabic ? "سياتل، واشنطن" : "Seattle, Washington",
+        isApproved: true,
+      ),
+      Company(
+        name: "Facebook",
+        email: "contact@facebook.com",
+        brandColor: const Color(0xFF1877F2),
+        logoUrl: "https://img.icons8.com/color/512/facebook-new.png",
+        location: isArabic
+            ? "مينلو بارك، كاليفورنيا"
+            : "Menlo Park, California",
+        isApproved: false,
+      ),
+      Company(
+        name: "LinkedIn",
+        email: "contact@linkedin.com",
+        brandColor: const Color(0xFF0A66C2),
+        logoUrl: "https://img.icons8.com/color/512/linkedin.png",
+        location: isArabic ? "ساني فيل، كاليفورنيا" : "Sunnyvale, California",
+        isApproved: false,
+      ),
+    ];
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildAvailableJobsCard(isArabic),
+            const SizedBox(height: 25),
+            Text(
+              isArabic
+                  ? "مراجعة واعتماد الشركات الجديدة"
+                  : "Review and approve registrations",
+              style: const TextStyle(color: kGreyText, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 15),
+            ...companies.map((comp) => CompanyCard(company: comp)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvailableJobsCard(bool isArabic) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: kPrimaryBlue,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isArabic ? "الوظائف المتاحة" : "Available Jobs",
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                "12,450",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          Icon(
+            Icons.stacked_line_chart,
+            color: Colors.white.withValues(alpha: 0.5),
+            size: 40,
+          ),
+        ],
+      ),
+    );
+  }
+}

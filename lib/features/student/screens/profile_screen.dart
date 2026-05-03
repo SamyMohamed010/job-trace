@@ -22,25 +22,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Controllers for text editing
   late TextEditingController _nameController;
   late TextEditingController _yearController;
-  late TextEditingController _universityController;
-  late TextEditingController _degreeController;
+  late TextEditingController _facultyController;
+  late TextEditingController _specialtyController;
+  late TextEditingController _programController;
   final TextEditingController _skillController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: studentService.name);
-    _yearController = TextEditingController(text: studentService.year);
-    _universityController = TextEditingController(text: studentService.faculty);
-    _degreeController = TextEditingController(text: studentService.major);
+    _yearController = TextEditingController(text: studentService.graduationYear);
+    _facultyController = TextEditingController(text: studentService.faculty);
+    _specialtyController = TextEditingController(text: studentService.specialty);
+    _programController = TextEditingController(text: studentService.program ?? "");
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _yearController.dispose();
-    _universityController.dispose();
-    _degreeController.dispose();
+    _facultyController.dispose();
+    _specialtyController.dispose();
+    _programController.dispose();
     _skillController.dispose();
     super.dispose();
   }
@@ -89,14 +92,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _pickVerification() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'png', 'jpeg'],
+        withData: true,
+      );
+
+      if (result != null) {
+        setState(() {
+          studentService.verificationFileName = result.files.single.name;
+          studentService.verificationFileData = result.files.single.bytes;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Verification document uploaded!")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Failed to pick file"), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   void _toggleEditMode() {
     if (_isEditMode) {
       // Save data back to service
       setState(() {
         studentService.name = _nameController.text;
-        studentService.year = _yearController.text;
-        studentService.faculty = _universityController.text;
-        studentService.major = _degreeController.text;
+        studentService.graduationYear = _yearController.text;
+        studentService.faculty = _facultyController.text;
+        studentService.specialty = _specialtyController.text;
+        studentService.program = _programController.text;
         _isEditMode = false;
       });
     } else {
@@ -221,6 +249,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileHeader() {
+    bool isAr = appLocalization.locale.languageCode == 'ar';
     return Column(
       children: [
         Stack(
@@ -256,27 +285,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (_isEditMode)
           _buildEditField(_nameController, fontSize: 24, fontWeight: FontWeight.bold)
         else
-          Text(studentService.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(studentService.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              if (studentService.isVerified) ...[
+                const SizedBox(width: 8),
+                const Icon(Icons.verified, color: Colors.blue, size: 20),
+              ],
+            ],
+          ),
         
-        const SizedBox(height: 5),
+        const SizedBox(height: 10),
+
+        // Verification Status Bar
+        if (!studentService.isVerified) ...[
+          GestureDetector(
+            onTap: _pickVerification,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade100,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.upload_file, size: 14, color: Colors.orange),
+                  const SizedBox(width: 5),
+                  Text(
+                    isAr ? "ارفع إثبات القيد للتوثيق" : "Upload verification doc",
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.orange),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
         
         // Education Details
         if (_isEditMode) ...[
-          _buildEditField(_yearController, prefix: "Graduated in "),
-          _buildEditField(_universityController),
-          _buildEditField(_degreeController),
+          _buildEditField(_facultyController, showPencil: true),
+          _buildEditField(_specialtyController, showPencil: true),
+          _buildEditField(_programController, showPencil: true, hint: isAr ? "البرنامج" : "Program"),
+          _buildEditField(_yearController, prefix: isAr ? "سنة التخرج: " : "Graduated in ", showPencil: true),
         ] else ...[
-          Text("Graduated in ${studentService.year}", style: const TextStyle(color: Colors.grey)),
-          Text(studentService.faculty, style: const TextStyle(color: Colors.grey)),
-          Text(studentService.major, style: const TextStyle(color: Colors.grey)),
+          Text(studentService.faculty, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+          Text(studentService.specialty, style: const TextStyle(color: Colors.grey)),
+          if (studentService.program != null && studentService.program!.isNotEmpty)
+            Text("${isAr ? "برنامج" : "Program"}: ${studentService.program}", style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          Text("${isAr ? "سنة التخرج" : "Graduated in"} ${studentService.graduationYear}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
           const SizedBox(height: 5),
-          Text(studentService.email, style: const TextStyle(color: Colors.blueGrey, fontSize: 14)),
+          Text(studentService.email, style: const TextStyle(color: Colors.blueGrey, fontSize: 13)),
         ],
       ],
     );
   }
 
-  Widget _buildEditField(TextEditingController controller, {double fontSize = 14, FontWeight fontWeight = FontWeight.normal, String prefix = ""}) {
+  Widget _buildEditField(TextEditingController controller, {double fontSize = 14, FontWeight fontWeight = FontWeight.normal, String prefix = "", bool showPencil = false, String hint = ""}) {
     return Container(
       width: 250,
       margin: const EdgeInsets.only(bottom: 5),
@@ -286,8 +353,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         style: TextStyle(fontSize: fontSize, fontWeight: fontWeight),
         decoration: InputDecoration(
           isDense: true,
+          hintText: hint,
           contentPadding: const EdgeInsets.symmetric(vertical: 5),
           prefixText: prefix,
+          suffixIcon: showPencil ? const Icon(Icons.edit, size: 14, color: Colors.blueAccent) : null,
           enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent, width: 1)),
         ),
       ),

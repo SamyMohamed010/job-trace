@@ -5,6 +5,7 @@ import 'forgot_password.dart';
 import 'home_screen.dart';
 import '../../company/screens/company_profile_screen.dart';
 import '../../company/screens/company_main_screen.dart';
+import '../../admin/screens/home_screen.dart' as admin;
 
 // لازم يكون مكتوب extends StatefulWidget أو StatelessWidget
 // لازم يكون مكتوب extends StatefulWidget أو StatelessWidget
@@ -95,6 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   return isArabic ? "مطلوب" : "Required";
                                 }
                                 final email = value.toLowerCase().trim();
+                                if (email == 'admin') return null; // Allow admin
                                 if (!RegExp(
                                   r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
                                 ).hasMatch(email)) {
@@ -282,7 +284,17 @@ class _LoginScreenState extends State<LoginScreen> {
               _isSubmitted = true;
             });
             if (_formKey.currentState!.validate()) {
-              _showUserTypeDialog(context, isLogin: true);
+              String email = _emailController.text.trim();
+              String password = _passwordController.text.trim();
+
+              if (email == 'admin' && password == '123456') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const admin.HomeScreen()),
+                );
+              } else {
+                _showUserTypeDialog(context, isLogin: true);
+              }
             }
           },
         ),

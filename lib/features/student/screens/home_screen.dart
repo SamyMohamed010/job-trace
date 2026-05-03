@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'job_details.screen.dart';
+import 'job_details_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 import 'applications_screen.dart';
@@ -543,12 +543,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 8),
                         InkWell(
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const JobDetailsScreen(),
-                              ),
-                            );
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => JobDetailsScreen(
+                                    title: job.title,
+                                    company: job.company,
+                                    location: job.location,
+                                  ),
+                                ),
+                              );
                           },
                           borderRadius: BorderRadius.circular(8),
                           child: Container(

@@ -42,6 +42,8 @@ class AppLocalization extends ChangeNotifier {
       'upload_logo': 'Upload Logo',
       'commercial_license': 'Commercial License',
       'upload_license': 'Upload License',
+      'skills': 'Skills',
+      'cv': 'CV',
     },
     'ar': {
       'login': 'تسجيل الدخول',
@@ -74,6 +76,8 @@ class AppLocalization extends ChangeNotifier {
       'upload_logo': 'رفع الشعار',
       'commercial_license': 'السجل التجاري',
       'upload_license': 'رفع السجل',
+      'skills': 'المهارات',
+      'cv': 'السيرة الذاتية',
     }
   };
 

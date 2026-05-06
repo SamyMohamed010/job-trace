@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/job.dart';
 import '../widgets/job_card.dart';
 
@@ -7,42 +8,57 @@ class JobsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // البيانات
-    final List<Job> jobs = [
-      Job(
-        position: "Software Engineer",
-        companyName: "Google",
-        location: "USA, CA",
-        salary: "\$150k",
-        logoUrl: "https://img.icons8.com/color/512/google-logo.png",
-      ),
-      Job(
-        position: "UI/UX Designer",
-        companyName: "Apple",
-        location: "USA, NY",
-        salary: "\$120k",
-        logoUrl: "https://img.icons8.com/ios-filled/512/mac-os.png",
-      ),
-      Job(
-        position: "Backend Developer",
-        companyName: "Microsoft",
-        location: "Remote",
-        salary: "\$140k",
-        logoUrl: "https://img.icons8.com/color/512/microsoft.png",
-      ),
-    ];
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('jobs')
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(child: Text('Error loading jobs'));
+        }
 
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // عرض الكروت
-            ...jobs.map((job) => JobCard(job: job)),
-          ],
-        ),
-      ),
+        final jobs =
+            snapshot.data?.docs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              final String salary =
+                  data['salary'] ??
+                  ((data['salaryFrom'] ?? '').toString().isNotEmpty &&
+                          (data['salaryTo'] ?? '').toString().isNotEmpty
+                      ? '${data['salaryFrom']} - ${data['salaryTo']}'
+                      : 'Not specified');
+              return Job(
+                id: doc.id,
+                companyId: data['companyId'] ?? '',
+                position: data['title'] ?? 'No title',
+                companyName: data['companyName'] ?? 'Unknown Company',
+                location: data['location'] ?? 'Unknown location',
+                salary: salary,
+                logoUrl:
+                    data['logoUrl'] ??
+                    'https://img.icons8.com/color/512/business.png',
+                status: data['status'] ?? 'pending',
+              );
+            }).toList() ??
+            [];
+
+        if (jobs.isEmpty) {
+          return const Center(child: Text('No jobs found'));
+        }
+
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: jobs.map((job) => JobCard(job: job)).toList(),
+            ),
+          ),
+        );
+      },
     );
   }
 }

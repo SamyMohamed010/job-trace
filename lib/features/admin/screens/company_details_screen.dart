@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/company.dart';
@@ -131,15 +132,70 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () async {
+                        final TextEditingController reasonController =
+                            TextEditingController();
+                        await showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text("Rejection reason"),
+                            content: TextField(
+                              controller: reasonController,
+                              minLines: 3,
+                              maxLines: 5,
+                              decoration: const InputDecoration(
+                                hintText: "Enter the rejection reason",
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: const Text("Cancel"),
+                              ),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  final reason = reasonController.text.trim();
+                                  if (reason.isEmpty) return;
+                                  if (widget.company.id != null) {
+                                    await FirebaseFirestore.instance
+                                        .collection('users')
+                                        .doc(widget.company.id)
+                                        .update({
+                                          'isApproved': false,
+                                          'status': 'rejected',
+                                          'rejectionReason': reason,
+                                        });
+                                  }
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          "Company rejected successfully",
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text("Confirm"),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red[50],
                         foregroundColor: Colors.red,
                         padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
                         elevation: 0,
                       ),
-                      child: const Text("Reject Registration", style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        "Reject Registration",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 15),
@@ -148,17 +204,25 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
                       onPressed: () {
                         setState(() => widget.company.isApproved = true);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Company approved successfully"), backgroundColor: Colors.green),
+                          const SnackBar(
+                            content: Text("Company approved successfully"),
+                            backgroundColor: Colors.green,
+                          ),
                         );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF229BD8),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
                         elevation: 0,
                       ),
-                      child: const Text("Approve Company", style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        "Approve Company",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],
@@ -176,7 +240,13 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
                   children: [
                     Icon(Icons.check_circle, color: Colors.green),
                     SizedBox(width: 10),
-                    Text("This company is approved", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                    Text(
+                      "This company is approved",
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ),

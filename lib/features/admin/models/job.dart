@@ -1,15 +1,21 @@
 class Job {
-  final String position; // مسمى الوظيفة (مثلاً Flutter Developer)
-  final String companyName; // اسم الشركة
-  final String location; // المكان
-  final String salary; // الراتب
-  final String logoUrl; // صورة الشركة
+  final String id;
+  final String companyId;
+  final String position;
+  final String companyName;
+  final String location;
+  final String salary;
+  final String logoUrl;
+  final String status;
 
   Job({
+    required this.id,
+    required this.companyId,
     required this.position,
     required this.companyName,
     required this.location,
     required this.salary,
     required this.logoUrl,
+    this.status = 'pending',
   });
 }

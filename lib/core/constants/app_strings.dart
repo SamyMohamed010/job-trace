@@ -1,3 +1,3 @@
 class AppStrings {
-  static const String splashSubTitle = "Connect with your dream career through Jop Trace";
+  static const String splashSubTitle = "Connecting Student with Real Opportunities";
 }

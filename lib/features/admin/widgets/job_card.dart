@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/job.dart';
 import '../screens/job_details_screen.dart'; // التأكد من عمل Import للشاشة الجديدة
@@ -10,6 +11,16 @@ class JobCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     bool isAr = Directionality.of(context) == TextDirection.rtl;
+    final String statusLabel = job.status == 'approved'
+        ? (isAr ? 'معتمد' : 'Approved')
+        : job.status == 'rejected'
+        ? (isAr ? 'مرفوض' : 'Rejected')
+        : (isAr ? 'معلق' : 'Pending');
+    final Color statusColor = job.status == 'approved'
+        ? Colors.green
+        : job.status == 'rejected'
+        ? Colors.red
+        : Colors.orange;
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(16),
@@ -71,9 +82,22 @@ class JobCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(5)),
-                    child: Text(isAr ? "معلق" : "Pending", style: const TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Text(
+                      statusLabel,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -99,23 +123,44 @@ class JobCard extends StatelessWidget {
                   },
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFF229BD8)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: Text(isAr ? "عرض" : "View", style: const TextStyle(color: Color(0xFF229BD8))),
+                  child: Text(
+                    isAr ? "عرض" : "View",
+                    style: const TextStyle(color: Color(0xFF229BD8)),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Job rejected")));
+                  onPressed: () async {
+                    if (job.id.isNotEmpty) {
+                      await FirebaseFirestore.instance
+                          .collection('jobs')
+                          .doc(job.id)
+                          .update({'status': 'rejected'});
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isAr ? 'تم رفض الوظيفة' : 'Job rejected',
+                            ),
+                          ),
+                        );
+                      }
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red.shade50,
                     elevation: 0,
                     foregroundColor: Colors.red,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   child: Text(isAr ? "رفض" : "Reject"),
@@ -124,13 +169,30 @@ class JobCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Job approved"), backgroundColor: Colors.green));
+                  onPressed: () async {
+                    if (job.id.isNotEmpty) {
+                      await FirebaseFirestore.instance
+                          .collection('jobs')
+                          .doc(job.id)
+                          .update({'status': 'approved'});
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isAr ? 'تم قبول الوظيفة' : 'Job approved',
+                            ),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF229BD8),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     elevation: 0,
                   ),

@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import '../company_data.dart';
 import '../../../app_localization.dart';
+import '../../../core/services/auth_service.dart';
+import 'company_approval_screen.dart';
 
 class CompanyRegisterStep3Screen extends StatefulWidget {
   const CompanyRegisterStep3Screen({super.key});
@@ -18,6 +20,7 @@ class _CompanyRegisterStep3ScreenState
   XFile? _logoImage;
   XFile? _licenseImage;
   final ImagePicker _picker = ImagePicker();
+  bool _isLoading = false;
 
   Future<void> pickLogo() async {
     final XFile? pickedFile = await _picker.pickImage(
@@ -109,7 +112,7 @@ class _CompanyRegisterStep3ScreenState
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: _isLoading ? null : () async {
                   if (_logoImage == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -130,8 +133,51 @@ class _CompanyRegisterStep3ScreenState
                   CompanyData().logoImage = _logoImage;
                   CompanyData().licenseImage = _licenseImage;
 
-                  // Navigate to Main screen
-                  Navigator.pushNamedAndRemoveUntil(context, '/company_main', (route) => false);
+                  setState(() {
+                    _isLoading = true;
+                  });
+
+                  try {
+                    final data = CompanyData();
+                    final authService = AuthService();
+                    
+                    Map<String, dynamic> companyInfo = {
+                      'name': data.name,
+                      'industry': data.industry,
+                      'overview': data.overview,
+                      'location': data.location,
+                      'website': data.website,
+                      'status': 'pending',
+                      'isApproved': false,
+                    };
+
+                    await authService.signUpWithEmailAndPassword(
+                      email: data.email,
+                      password: data.password,
+                      role: 'company',
+                      additionalData: companyInfo,
+                    );
+
+                    if (mounted) {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => const CompanyApprovalScreen()),
+                        (route) => false,
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                      );
+                    }
+                  } finally {
+                    if (mounted) {
+                      setState(() {
+                        _isLoading = false;
+                      });
+                    }
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -142,7 +188,9 @@ class _CompanyRegisterStep3ScreenState
                   elevation: 5,
                   shadowColor: const Color(0xFF229BD8).withOpacity(0.5),
                 ),
-                child: Text(
+                child: _isLoading 
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : Text(
                   appLocalization.translate('register'),
                   style: const TextStyle(
                     fontSize: 16,

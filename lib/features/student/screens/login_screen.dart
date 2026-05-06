@@ -5,7 +5,11 @@ import 'forgot_password.dart';
 import 'home_screen.dart';
 import '../../company/screens/company_profile_screen.dart';
 import '../../company/screens/company_main_screen.dart';
+import '../../company/screens/company_approval_screen.dart';
 import '../../admin/screens/home_screen.dart' as admin;
+import '../../../core/services/auth_service.dart';
+import '../../../core/services/database_service.dart';
+import '../../../core/student_service.dart';
 
 // لازم يكون مكتوب extends StatefulWidget أو StatelessWidget
 // لازم يكون مكتوب extends StatefulWidget أو StatelessWidget
@@ -23,6 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isPasswordVisible = false;
   bool _isSubmitted = false;
+  bool _isLoading = false;
   bool isArabic = false; // التحكم في اللغة
 
   final Color primaryBlue = const Color(0xFF229BD8);
@@ -96,7 +101,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   return isArabic ? "مطلوب" : "Required";
                                 }
                                 final email = value.toLowerCase().trim();
-                                if (email == 'admin') return null; // Allow admin
+                                if (email == 'admin')
+                                  return null; // Allow admin
                                 if (!RegExp(
                                   r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
                                 ).hasMatch(email)) {
@@ -172,7 +178,8 @@ class _LoginScreenState extends State<LoginScreen> {
       children: [
         Container(
           margin: const EdgeInsets.only(top: 5, bottom: 5),
-          height: 85, width: 85,
+          height: 85,
+          width: 85,
           clipBehavior: Clip.hardEdge,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
@@ -270,41 +277,158 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildActionButtons() {
     return Column(
       children: [
-        _buildButton(
-          texts['login']!,
-          // ignore: deprecated_member_use
-          primaryBlue, // لون باهت
-          Colors.white,
-          () {
-            setState(() {
-              _isSubmitted = true;
-            });
-            if (_formKey.currentState!.validate()) {
-              String email = _emailController.text.trim();
-              String password = _passwordController.text.trim();
+        _isLoading
+            ? const CircularProgressIndicator()
+            : _buildButton(
+                texts['login']!,
+                primaryBlue,
+                Colors.white,
+                () async {
+                  setState(() {
+                    _isSubmitted = true;
+                  });
+                  if (_formKey.currentState!.validate()) {
+                    String email = _emailController.text.trim();
+                    String password = _passwordController.text.trim();
 
-              if (email == 'admin' && password == '123456') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const admin.HomeScreen()),
-                );
-              } else {
-                _showUserTypeDialog(context, isLogin: true);
-              }
-            }
-          },
-        ),
+                    if (email == 'admin' && password == '123456') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const admin.HomeScreen(),
+                        ),
+                      );
+                    } else {
+                      setState(() {
+                        _isLoading = true;
+                      });
+                      try {
+                        final auth = AuthService();
+                        final cred = await auth.signInWithEmailAndPassword(
+                          email: email,
+                          password: password,
+                        );
+                        if (cred != null && cred.user != null) {
+                          final doc = await DatabaseService(
+                            uid: cred.user!.uid,
+                          ).getUserData();
+                          if (doc.exists) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            if (data['role'] == 'student') {
+                              studentService.name = data['name'] ?? 'Student';
+                              studentService.email = data['email'] ?? email;
+                              studentService.faculty = data['faculty'] ?? '';
+                              studentService.specialty =
+                                  data['specialty'] ?? '';
+                              studentService.graduationYear =
+                                  data['graduationYear'] ?? '';
+                              studentService.program = data['program'];
+
+                              if (data['skills'] != null) {
+                                studentService.skills = List<String>.from(
+                                  data['skills'],
+                                );
+                              } else {
+                                studentService.skills = [];
+                              }
+
+                              if (mounted) {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => HomeScreen(
+                                      userName: studentService.name,
+                                    ),
+                                  ),
+                                );
+                              }
+                            } else if (data['role'] == 'company') {
+                              if (data['isApproved'] == true ||
+                                  data['status'] == 'approved') {
+                                if (mounted) {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const CompanyMainScreen(),
+                                    ),
+                                  );
+                                }
+                              } else {
+                                if (mounted) {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          CompanyApprovalScreen(
+                                            status:
+                                                data['status'] as String? ??
+                                                'pending',
+                                            rejectionReason:
+                                                data['rejectionReason']
+                                                    as String? ??
+                                                '',
+                                          ),
+                                    ),
+                                  );
+                                }
+                              }
+                            } else {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      isArabic
+                                          ? "دور المستخدم غير معروف"
+                                          : "Unknown user role",
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          } else {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    isArabic
+                                        ? "لم يتم العثور على بيانات الحساب"
+                                        : "User data not found",
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString()),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      } finally {
+                        if (mounted) {
+                          setState(() {
+                            _isLoading = false;
+                          });
+                        }
+                      }
+                    }
+                  }
+                },
+              ),
         const SizedBox(height: 10),
         _buildButton(
           texts['create']!,
           Colors.white,
-          // ignore: deprecated_member_use
           primaryBlue,
           () {
             _showUserTypeDialog(context, isLogin: false);
           },
-          // ignore: deprecated_member_use
-          borderColor: primaryBlue.withOpacity(0.3), // إطار باهت
+          borderColor: primaryBlue.withOpacity(0.3),
         ),
       ],
     );
@@ -342,16 +466,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  if (isLogin) {
-                    String userName = _emailController.text.split('@')[0];
-                    if (userName.isEmpty) userName = "Student";
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => HomeScreen(userName: userName),
-                      ),
-                    );
-                  } else {
+                  if (!isLogin) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -369,14 +484,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  if (isLogin) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const CompanyMainScreen(),
-                      ),
-                    );
-                  } else {
+                  if (!isLogin) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(

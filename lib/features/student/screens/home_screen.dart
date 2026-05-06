@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/student_service.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'job_details_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
@@ -38,90 +39,48 @@ class _HomeScreenState extends State<HomeScreen> {
   final Color grayBg = const Color(0xFFEBEEF4);
   final Color grayText = const Color(0xFF7E848E);
 
-  String selectedFilter =
-      'All'; // 'All', 'Internship', 'Part-time', 'Full-time'
+  String selectedFilter = 'All';
   String searchQuery = "";
-  int _currentIndex = 1; // 1 = Home
+  int _currentIndex = 1;
   bool isArabic = false;
-
-  final List<Job> allJobs = [
-    Job(
-      title: 'Flutter Developer Intern',
-      company: 'Vodafone Egypt',
-      location: 'Cairo, Egypt',
-      type: 'Internship',
-      logoPath: 'assets/images/logo image.jpg',
-    ),
-    Job(
-      title: 'UI/UX Designer',
-      company: 'Google Egypt',
-      location: 'Cairo, Egypt',
-      type: 'Full-time',
-      logoPath: 'assets/images/logo image.jpg',
-    ),
-    Job(
-      title: 'Data Analyst Intern',
-      company: 'Amazon',
-      location: 'Ajman, UAE',
-      type: 'Part-time',
-      logoPath: 'assets/images/logo image.jpg',
-    ),
-    Job(
-      title: 'Backend Engineer',
-      company: 'Microsoft',
-      location: 'Remote',
-      type: 'Full-time',
-      logoPath: 'assets/images/logo image.jpg',
-    ),
-  ];
 
   Map<String, String> get texts {
     bool isAr = appLocalization.locale.languageCode == 'ar';
     return {
-
-    'logout': isArabic ? "خروج" : "Logout",
-    'hello': isArabic ? "مرحباً، " : "Hello, ",
-    'findNext': isArabic
-        ? "ابحث عن فرصتك القادمة"
-        : "Find your next opportunity",
-    'searchHint': isArabic
-        ? "ابحث عن المسمى الوظيفي..."
-        : "Search by job title...",
-    'view': isArabic ? "عرض" : "View",
-    'All': isArabic ? "الكل" : "All",
-    'Internship': isArabic ? "تدريب" : "Internship",
-    'Part-time': isArabic ? "دوام جزئي" : "Part-time",
-    'Full-time': isArabic ? "دوام كامل" : "Full-time",
-    'navApp': isArabic ? "الطلبات" : "Applications",
-    'navHome': isArabic ? "الرئيسية" : "Home",
-    'navProfile': isArabic ? "الملف الشخصي" : "Profile",
-    'notifications': isArabic ? "الإشعارات" : "Notifications",
-    'appUpdated': isArabic ? "تحديث الطلب" : "Application Updated",
-    'appUpdatedDesc': isArabic
-        ? "فودافون مصر شاهدت طلبك."
-        : "Vodafone Egypt viewed your application.",
-    'newJob': isArabic ? "فرصة جديدة" : "New Job Match",
-    'newJobDesc': isArabic
-        ? "جوجل مصر نشرت وظيفة جديدة."
-        : "Google Egypt posted a new UI/UX role.",
-    'profileTip': isArabic ? "تلميح" : "Profile Tip",
-    'profileTipDesc': isArabic
-        ? "أكمل مهاراتك لتتميز."
-        : "Complete your skills to stand out.",
-  };
+      'logout': isArabic ? "خروج" : "Logout",
+      'hello': isArabic ? "مرحباً، " : "Hello, ",
+      'findNext': isArabic
+          ? "ابحث عن فرصتك القادمة"
+          : "Find your next opportunity",
+      'searchHint': isArabic
+          ? "ابحث عن المسمى الوظيفي..."
+          : "Search by job title...",
+      'view': isArabic ? "عرض" : "View",
+      'All': isArabic ? "الكل" : "All",
+      'Internship': isArabic ? "تدريب" : "Internship",
+      'Part-time': isArabic ? "دوام جزئي" : "Part-time",
+      'Full-time': isArabic ? "دوام كامل" : "Full-time",
+      'navApp': isArabic ? "الطلبات" : "Applications",
+      'navHome': isArabic ? "الرئيسية" : "Home",
+      'navProfile': isArabic ? "الملف الشخصي" : "Profile",
+      'notifications': isArabic ? "الإشعارات" : "Notifications",
+      'appUpdated': isArabic ? "تحديث الطلب" : "Application Updated",
+      'appUpdatedDesc': isArabic
+          ? "فودافون مصر شاهدت طلبك."
+          : "Vodafone Egypt viewed your application.",
+      'newJob': isArabic ? "فرصة جديدة" : "New Job Match",
+      'newJobDesc': isArabic
+          ? "جوجل مصر نشرت وظيفة جديدة."
+          : "Google Egypt posted a new UI/UX role.",
+      'profileTip': isArabic ? "تلميح" : "Profile Tip",
+      'profileTipDesc': isArabic
+          ? "أكمل مهاراتك لتتميز."
+          : "Complete your skills to stand out.",
+    };
   }
 
   @override
   Widget build(BuildContext context) {
-    List<Job> filteredJobs = allJobs.where((job) {
-      bool matchesFilter =
-          selectedFilter == 'All' || job.type == selectedFilter;
-      bool matchesSearch = job.title.toLowerCase().contains(
-        searchQuery.toLowerCase(),
-      );
-      return matchesFilter && matchesSearch;
-    }).toList();
-
     return AnimatedBuilder(
       animation: appLocalization,
       builder: (context, child) {
@@ -129,79 +88,130 @@ class _HomeScreenState extends State<HomeScreen> {
         return Directionality(
           textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
           child: Scaffold(
+            backgroundColor: grayBg,
+            body: SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildTopHeader(),
+                  if (!studentService.isVerified) _buildVerificationBar(),
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('jobs')
+                          .orderBy('createdAt', descending: true)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
 
-        backgroundColor: grayBg,
-        body: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildTopHeader(),
-              if (!studentService.isVerified) _buildVerificationBar(),
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text(
+                              'Error loading jobs: \${snapshot.error}',
+                            ),
+                          );
+                        }
 
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0,
-                    vertical: 10.0,
+                        List<Job> fetchedJobs =
+                            snapshot.data?.docs.map((doc) {
+                              final data = doc.data() as Map<String, dynamic>;
+                              return Job(
+                                title: data['title'] ?? 'Unknown Title',
+                                company:
+                                    data['companyName'] ?? 'Unknown Company',
+                                location:
+                                    data['location'] ?? 'Unknown Location',
+                                type: data['jobType'] ?? 'Full-time',
+                                logoPath:
+                                    'assets/images/logo image.jpg', // Placeholder for now
+                              );
+                            }).toList() ??
+                            [];
+
+                        List<Job> filteredJobs = fetchedJobs.where((job) {
+                          bool matchesFilter =
+                              selectedFilter == 'All' ||
+                              job.type == selectedFilter;
+                          bool matchesSearch = job.title.toLowerCase().contains(
+                            searchQuery.toLowerCase(),
+                          );
+                          return matchesFilter && matchesSearch;
+                        }).toList();
+
+                        return ListView(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24.0,
+                            vertical: 10.0,
+                          ),
+                          children: [
+                            RichText(
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: texts['hello']!,
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryBlue,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: widget.userName,
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryBlueLight,
+                                    ),
+                                  ),
+                                  const TextSpan(
+                                    text: " 👋",
+                                    style: TextStyle(fontSize: 22),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              texts['findNext']!,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: grayText,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            _buildSearchBar(),
+                            const SizedBox(height: 15),
+                            _buildFilters(),
+                            const SizedBox(height: 15),
+                            if (filteredJobs.isEmpty)
+                              Center(
+                                child: Text(
+                                  isArabic
+                                      ? "لا توجد وظائف حالياً"
+                                      : "No jobs found",
+                                  style: TextStyle(color: grayText),
+                                ),
+                              ),
+                            ...filteredJobs.map((job) => _buildJobCard(job)),
+                          ],
+                        );
+                      },
+                    ),
                   ),
-                  children: [
-                    // Hello and Subtitle (Disappears on scroll)
-                    RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: texts['hello']!,
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: primaryBlue,
-                            ),
-                          ),
-                          TextSpan(
-                            text: widget.userName,
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: primaryBlueLight,
-                            ),
-                          ),
-                          const TextSpan(
-                            text: " 👋",
-                            style: TextStyle(fontSize: 22),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      texts['findNext']!,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: grayText,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    _buildSearchBar(),
-                    const SizedBox(height: 15),
-
-                    _buildFilters(),
-                    const SizedBox(height: 15),
-
-                    ...filteredJobs.map((job) => _buildJobCard(job)),
-                  ],
-                ),
+                ],
               ),
-            ],
+            ),
+            bottomNavigationBar: _buildBottomNav(),
           ),
-        ),
-        bottomNavigationBar: _buildBottomNav(),
-      ),
-    );
+        );
       },
     );
-
   }
 
   Widget _buildTopHeader() {
@@ -232,9 +242,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Image.asset(
                   'assets/images/logo image.jpg',
                   fit: BoxFit.cover,
-                  errorBuilder:
-                      (context, error, stackTrace) =>
-                          const Icon(Icons.person, color: Colors.grey),
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.person, color: Colors.grey),
                 ),
               ),
               const SizedBox(width: 8),
@@ -245,21 +254,48 @@ class _HomeScreenState extends State<HomeScreen> {
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: Text(isAr ? "تأكيد تسجيل الخروج" : "Confirm Logout", style: TextStyle(color: primaryBlue, fontWeight: FontWeight.bold)),
-                      content: Text(isAr ? "هل أنت متأكد أنك تريد تسجيل الخروج؟" : "Are you sure you want to log out?", style: TextStyle(color: grayText)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      title: Text(
+                        isAr ? "تأكيد تسجيل الخروج" : "Confirm Logout",
+                        style: TextStyle(
+                          color: primaryBlue,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      content: Text(
+                        isAr
+                            ? "هل أنت متأكد أنك تريد تسجيل الخروج؟"
+                            : "Are you sure you want to log out?",
+                        style: TextStyle(color: grayText),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: Text(isAr ? "إلغاء" : "Cancel", style: TextStyle(color: primaryBlueLight)),
+                          child: Text(
+                            isAr ? "إلغاء" : "Cancel",
+                            style: TextStyle(color: primaryBlueLight),
+                          ),
                         ),
                         ElevatedButton(
                           onPressed: () {
                             Navigator.pop(context);
-                            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const LoginScreen(),
+                              ),
+                            );
                           },
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade50, elevation: 0),
-                          child: Text(isAr ? "خروج" : "Logout", style: const TextStyle(color: Colors.red)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade50,
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            isAr ? "خروج" : "Logout",
+                            style: const TextStyle(color: Colors.red),
+                          ),
                         ),
                       ],
                     ),
@@ -567,16 +603,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 8),
                         InkWell(
                           onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => JobDetailsScreen(
-                                    title: job.title,
-                                    company: job.company,
-                                    location: job.location,
-                                  ),
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => JobDetailsScreen(
+                                  title: job.title,
+                                  company: job.company,
+                                  location: job.location,
                                 ),
-                              );
+                              ),
+                            );
                           },
                           borderRadius: BorderRadius.circular(8),
                           child: Container(
@@ -742,7 +778,11 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orange,
+            size: 24,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -750,10 +790,16 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   isArabic ? "حسابك غير موثق" : "Unverified Account",
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Colors.black87,
+                  ),
                 ),
                 Text(
-                  isArabic ? "وثق حسابك للتمكن من التقديم" : "Verify now to apply for jobs",
+                  isArabic
+                      ? "وثق حسابك للتمكن من التقديم"
+                      : "Verify now to apply for jobs",
                   style: const TextStyle(fontSize: 11, color: Colors.black54),
                 ),
               ],
@@ -761,15 +807,23 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              );
             },
             style: TextButton.styleFrom(
               backgroundColor: primaryBlueLight,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-            child: Text(isArabic ? "وثق الآن" : "Verify", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            child: Text(
+              isArabic ? "وثق الآن" : "Verify",
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),

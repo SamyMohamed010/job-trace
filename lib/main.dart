@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:firebase_core/firebase_core.dart'; // 1. أضف هذا السطر
+import 'firebase_options.dart'; // 2. أضف هذا السطر (الملف اللي اتعمل تلقائياً)
 import 'app_localization.dart';
 import 'features/company/screens/company_register_screen.dart';
 import 'features/company/screens/company_register_step2_screen.dart';
@@ -14,8 +16,17 @@ import 'features/student/screens/home_screen.dart';
 import 'features/student/screens/profile_screen.dart';
 import 'features/student/screens/applications_screen.dart';
 
-void main() {
-  runApp(MyApp());
+// 3. حول الـ main لـ Future<void> واجعلها async
+void main() async {
+  // 4. السطر ده ضروري جداً لضمان عمل الفايربيز قبل تشغيل التطبيق
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 5. تهيئة الفايربيز باستخدام الإعدادات الخاصة بمشروعك
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -38,9 +49,7 @@ class MyApp extends StatelessWidget {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          // البداية من شاشة السبلاش
           initialRoute: '/splash',
-          
           routes: {
             '/splash': (context) => const SplashScreen(),
             '/login': (context) => const LoginScreen(),

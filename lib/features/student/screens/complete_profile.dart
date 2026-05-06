@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
-import 'package:file_picker/file_picker.dart'; 
+import 'package:file_picker/file_picker.dart';
 import '../../../core/student_service.dart';
 import '../../../app_localization.dart';
+import '../../../core/services/auth_service.dart';
+import '../../../core/services/database_service.dart';
 
 class CompleteProfileScreen extends StatefulWidget {
   final String userName;
@@ -25,8 +27,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   String? selectedFaculty;
   String? selectedMajor;
   String? selectedYear;
-  String? studyStatus; 
+  String? studyStatus;
   String? cvFileName;
+  Uint8List? cvFileData;
   String? profileImageName;
   Uint8List? profileImageBytes;
   bool isLoading = false;
@@ -43,12 +46,16 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       'statusGrad': isAr ? "خريج" : "Graduate",
       'facLabel': isAr ? "الكلية" : "Faculty",
       'majorLabel': isAr ? "التخصص" : "Specialty",
-      'programLabel': isAr ? "البرنامج الدراسي (اختياري)" : "Academic Program (Optional)",
+      'programLabel': isAr
+          ? "البرنامج الدراسي (اختياري)"
+          : "Academic Program (Optional)",
       'yearLabel': isAr ? "السنة الدراسية" : "Study Year",
       'gradYearLabel': isAr ? "سنة التخرج" : "Graduation Year",
       'skillsLabel': isAr ? "المهارات" : "Skills",
       'cvLabel': isAr ? "رفع السيرة الذاتية" : "Upload CV",
-      'verificationLabel': isAr ? "إثبات قيد / شهادة تخرج" : "Univ. Verification",
+      'verificationLabel': isAr
+          ? "إثبات قيد / شهادة تخرج"
+          : "Univ. Verification",
       'imgLabel': isAr ? "صورة الملف" : "Profile Image",
       'saveBtn': isAr ? "حفظ واستمرار" : "Save & Continue",
       'studentYears': isAr
@@ -57,16 +64,23 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
               "السنة الثانية",
               "السنة الثالثة",
               "السنة الرابعة",
-              if (selectedFaculty == "كلية الهندسة" || selectedFaculty == "Engineering") "السنة الخامسة"
+              if (selectedFaculty == "كلية الهندسة" ||
+                  selectedFaculty == "Engineering")
+                "السنة الخامسة",
             ]
           : [
               "First Year",
               "Second Year",
               "Third Year",
               "Fourth Year",
-              if (selectedFaculty == "Engineering" || selectedFaculty == "كلية الهندسة") "Fifth Year"
+              if (selectedFaculty == "Engineering" ||
+                  selectedFaculty == "كلية الهندسة")
+                "Fifth Year",
             ],
-      'gradYears': List.generate(10, (index) => (currentYear - index).toString()),
+      'gradYears': List.generate(
+        10,
+        (index) => (currentYear - index).toString(),
+      ),
       'faculties': isAr
           ? ["كلية الحاسبات", "كلية الهندسة", "كلية العلوم", "كلية التجارة"]
           : ["Computers & Info", "Engineering", "Science", "Commerce"],
@@ -92,12 +106,18 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
           verificationFileData = result.files.single.bytes;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isAr ? "تم اختيار ملف التوثيق" : "Verification file selected")),
+          SnackBar(
+            content: Text(
+              isAr ? "تم اختيار ملف التوثيق" : "Verification file selected",
+            ),
+          ),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(isAr ? "فشل اختيار الملف" : "Failed to pick file")),
+        SnackBar(
+          content: Text(isAr ? "فشل اختيار الملف" : "Failed to pick file"),
+        ),
       );
     }
   }
@@ -108,19 +128,30 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'doc', 'docx'],
+        withData: true,
       );
 
       if (result != null) {
         setState(() {
           cvFileName = result.files.single.name;
+          cvFileData = result.files.single.bytes;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isAr ? "تم اختيار الملف: $cvFileName" : "File selected: $cvFileName")),
+          SnackBar(
+            content: Text(
+              isAr
+                  ? "تم اختيار الملف: $cvFileName"
+                  : "File selected: $cvFileName",
+            ),
+          ),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(isAr ? "فشل اختيار الملف" : "Failed to pick file"), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(isAr ? "فشل اختيار الملف" : "Failed to pick file"),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -144,7 +175,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(isAr ? "فشل اختيار الصورة" : "Failed to pick image")),
+        SnackBar(
+          content: Text(isAr ? "فشل اختيار الصورة" : "Failed to pick image"),
+        ),
       );
     }
   }
@@ -155,16 +188,35 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(isAr ? "تأكيد تسجيل الخروج" : "Confirm Logout", style: TextStyle(color: primaryBlue, fontWeight: FontWeight.bold)),
-        content: Text(isAr ? "هل أنت متأكد؟ سيتم فقدان البيانات غير المحفوظة." : "Are you sure? Unsaved data will be lost."),
+        title: Text(
+          isAr ? "تأكيد تسجيل الخروج" : "Confirm Logout",
+          style: TextStyle(color: primaryBlue, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          isAr
+              ? "هل أنت متأكد؟ سيتم فقدان البيانات غير المحفوظة."
+              : "Are you sure? Unsaved data will be lost.",
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(isAr ? "استمرار" : "Stay", style: TextStyle(color: primaryBlue))),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              isAr ? "استمرار" : "Stay",
+              style: TextStyle(color: primaryBlue),
+            ),
+          ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginScreen()),
+              );
             },
-            child: Text(isAr ? "خروج" : "Logout", style: const TextStyle(color: Colors.red)),
+            child: Text(
+              isAr ? "خروج" : "Logout",
+              style: const TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -189,9 +241,18 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
             actions: [
               TextButton(
                 onPressed: () => appLocalization.toggleLanguage(),
-                child: Text(isAr ? "English" : "العربية", style: TextStyle(color: primaryBlue, fontWeight: FontWeight.bold)),
+                child: Text(
+                  isAr ? "English" : "العربية",
+                  style: TextStyle(
+                    color: primaryBlue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-              IconButton(icon: Icon(Icons.logout, color: grayTextColor), onPressed: _handleLogout),
+              IconButton(
+                icon: Icon(Icons.logout, color: grayTextColor),
+                onPressed: _handleLogout,
+              ),
               const SizedBox(width: 10),
             ],
           ),
@@ -204,152 +265,315 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                 const SizedBox(height: 15),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0,
+                      vertical: 10,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(content['title'], style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryBlue)),
+                        Text(
+                          content['title'],
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: primaryBlue,
+                          ),
+                        ),
                         const SizedBox(height: 25),
 
-                  _buildLabel(content['statusLabel']),
-                  Row(
-                    children: [
-                      Expanded(child: _buildSelectionCard(title: content['statusStudent'], isSelected: studyStatus == 'student', onTap: () => setState(() => studyStatus = 'student'))),
-                      const SizedBox(width: 10),
-                      Expanded(child: _buildSelectionCard(title: content['statusGrad'], isSelected: studyStatus == 'graduate', onTap: () => setState(() => studyStatus = 'graduate'))),
-                    ],
-                  ),
-                  if (studyStatus != null) ...[
-                    const SizedBox(height: 20),
-                    _buildLabel(content['facLabel']),
-                    _buildDropdown(selectedFaculty, isAr ? "اختر الكلية" : "Select Faculty", content['faculties'], (val) => setState(() => selectedFaculty = val)),
-                    const SizedBox(height: 15),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        _buildLabel(content['statusLabel']),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildSelectionCard(
+                                title: content['statusStudent'],
+                                isSelected: studyStatus == 'student',
+                                onTap: () =>
+                                    setState(() => studyStatus = 'student'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _buildSelectionCard(
+                                title: content['statusGrad'],
+                                isSelected: studyStatus == 'graduate',
+                                onTap: () =>
+                                    setState(() => studyStatus = 'graduate'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (studyStatus != null) ...[
+                          const SizedBox(height: 20),
+                          _buildLabel(content['facLabel']),
+                          _buildDropdown(
+                            selectedFaculty,
+                            isAr ? "اختر الكلية" : "Select Faculty",
+                            content['faculties'],
+                            (val) => setState(() => selectedFaculty = val),
+                          ),
+                          const SizedBox(height: 15),
+                          Row(
                             children: [
-                              _buildLabel(content['majorLabel']),
-                              Container(
-                                width: 350,
-                                decoration: BoxDecoration(
-                                  color: Colors.white, 
-                                  borderRadius: BorderRadius.circular(15), 
-                                  border: Border.all(color: Colors.grey.shade100),
-                                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildLabel(content['majorLabel']),
+                                    Container(
+                                      width: 350,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(15),
+                                        border: Border.all(
+                                          color: Colors.grey.shade100,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(
+                                              0.05,
+                                            ),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: TextField(
+                                        onChanged: (val) =>
+                                            setState(() => selectedMajor = val),
+                                        style: const TextStyle(fontSize: 12),
+                                        decoration: InputDecoration(
+                                          hintText: isAr
+                                              ? "مثلاً: علوم حاسب"
+                                              : "e.g. CS",
+                                          hintStyle: TextStyle(
+                                            color: Colors.grey.shade300,
+                                            fontSize: 12,
+                                          ),
+                                          border: InputBorder.none,
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 12,
+                                              ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                child: TextField(
-                                  onChanged: (val) => setState(() => selectedMajor = val),
-                                  style: const TextStyle(fontSize: 12),
-                                  decoration: InputDecoration(hintText: isAr ? "مثلاً: علوم حاسب" : "e.g. CS", hintStyle: TextStyle(color: Colors.grey.shade300, fontSize: 12), border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12)),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildLabel(
+                                      studyStatus == 'student'
+                                          ? content['yearLabel']
+                                          : content['gradYearLabel'],
+                                    ),
+                                    _buildDropdown(
+                                      selectedYear,
+                                      isAr ? "السنة" : "Year",
+                                      studyStatus == 'student'
+                                          ? content['studentYears']
+                                          : content['gradYears'],
+                                      (val) =>
+                                          setState(() => selectedYear = val),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(height: 15),
+                          _buildLabel(content['programLabel']),
+                          Container(
+                            width: 350,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(15),
+                              border: Border.all(color: Colors.grey.shade100),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: TextField(
+                              onChanged: (val) =>
+                                  setState(() => selectedProgram = val),
+                              style: const TextStyle(fontSize: 12),
+                              decoration: InputDecoration(
+                                hintText: isAr
+                                    ? "مثلاً: فيزياء حاسب"
+                                    : "e.g. Computer Physics",
+                                hintStyle: TextStyle(
+                                  color: Colors.grey.shade300,
+                                  fontSize: 12,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          _buildSkillsSection(),
+                          const SizedBox(height: 20),
+                          Row(
                             children: [
-                              _buildLabel(studyStatus == 'student' ? content['yearLabel'] : content['gradYearLabel']),
-                              _buildDropdown(selectedYear, isAr ? "السنة" : "Year", studyStatus == 'student' ? content['studentYears'] : content['gradYears'], (val) => setState(() => selectedYear = val)),
+                              Expanded(
+                                child: _buildUploadArea(
+                                  title: cvFileName ?? content['cvLabel'],
+                                  icon: Icons.picture_as_pdf_outlined,
+                                  onTap: _pickCV,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _buildUploadArea(
+                                  title:
+                                      profileImageName ?? content['imgLabel'],
+                                  icon: Icons.image_outlined,
+                                  onTap: _pickProfileImage,
+                                ),
+                              ),
                             ],
                           ),
-                        ),
+                          const SizedBox(height: 10),
+                          _buildUploadArea(
+                            title:
+                                verificationFileName ??
+                                content['verificationLabel'],
+                            icon: Icons.verified_user_outlined,
+                            onTap: _pickVerification,
+                          ),
+                          const SizedBox(height: 30),
+                          _buildSaveButton(),
+                        ],
                       ],
                     ),
-                    const SizedBox(height: 15),
-                    _buildLabel(content['programLabel']),
-                    Container(
-                      width: 350,
-                      decoration: BoxDecoration(
-                        color: Colors.white, 
-                        borderRadius: BorderRadius.circular(15), 
-                        border: Border.all(color: Colors.grey.shade100),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
-                      ),
-                      child: TextField(
-                        onChanged: (val) => setState(() => selectedProgram = val),
-                        style: const TextStyle(fontSize: 12),
-                        decoration: InputDecoration(hintText: isAr ? "مثلاً: فيزياء حاسب" : "e.g. Computer Physics", hintStyle: TextStyle(color: Colors.grey.shade300, fontSize: 12), border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12)),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _buildSkillsSection(),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(child: _buildUploadArea(title: cvFileName ?? content['cvLabel'], icon: Icons.picture_as_pdf_outlined, onTap: _pickCV)),
-                        const SizedBox(width: 10),
-                        Expanded(child: _buildUploadArea(title: profileImageName ?? content['imgLabel'], icon: Icons.image_outlined, onTap: _pickProfileImage)),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    _buildUploadArea(
-                      title: verificationFileName ?? content['verificationLabel'], 
-                      icon: Icons.verified_user_outlined, 
-                      onTap: _pickVerification
-                    ),
-                    const SizedBox(height: 30),
-                    _buildSaveButton(),
-                      ],
-                    ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
+        );
       },
     );
   }
 
   Widget _buildLogo() {
     return Container(
-      height: 80, width: 80,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)]),
-      child: ClipOval(child: Image.asset('assets/images/logo image.jpg', fit: BoxFit.cover, errorBuilder: (c, e, s) => const Icon(Icons.business, size: 40))),
+      height: 80,
+      width: 80,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+      ),
+      child: ClipOval(
+        child: Image.asset(
+          'assets/images/logo image.jpg',
+          fit: BoxFit.cover,
+          errorBuilder: (c, e, s) => const Icon(Icons.business, size: 40),
+        ),
+      ),
     );
   }
 
-  Widget _buildSelectionCard({required String title, required bool isSelected, required VoidCallback onTap}) {
+  Widget _buildSelectionCard({
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: isSelected ? primaryBlue : Colors.white, 
-        borderRadius: BorderRadius.circular(15), 
-        border: Border.all(color: isSelected ? primaryBlue : Colors.black12),
-        boxShadow: [if (!isSelected) BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
-      ),
-      child: Center(child: Text(title, style: TextStyle(color: isSelected ? Colors.white : grayTextColor, fontWeight: FontWeight.bold, fontSize: 12))),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryBlue : Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: isSelected ? primaryBlue : Colors.black12),
+          boxShadow: [
+            if (!isSelected)
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            title,
+            style: TextStyle(
+              color: isSelected ? Colors.white : grayTextColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildLabel(String text) => Padding(padding: const EdgeInsets.only(bottom: 8, left: 5, right: 5), child: Text(text, style: TextStyle(color: grayTextColor, fontWeight: FontWeight.w600, fontSize: 14)));
+  Widget _buildLabel(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 8, left: 5, right: 5),
+    child: Text(
+      text,
+      style: TextStyle(
+        color: grayTextColor,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+      ),
+    ),
+  );
 
-  Widget _buildDropdown(String? value, String hint, List<String> items, Function(String?) onChanged) {
+  Widget _buildDropdown(
+    String? value,
+    String hint,
+    List<String> items,
+    Function(String?) onChanged,
+  ) {
     return Container(
       width: 350,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white, 
-        borderRadius: BorderRadius.circular(15), 
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: items.contains(value) ? value : null,
           isExpanded: true,
           dropdownColor: Colors.white,
-          hint: Text(hint, style: TextStyle(fontSize: 12, color: Colors.grey.shade300)),
-          items: items.map((i) => DropdownMenuItem(value: i, child: Text(i, style: const TextStyle(fontSize: 12)))).toList(),
+          hint: Text(
+            hint,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade300),
+          ),
+          items: items
+              .map(
+                (i) => DropdownMenuItem(
+                  value: i,
+                  child: Text(i, style: const TextStyle(fontSize: 12)),
+                ),
+              )
+              .toList(),
           onChanged: onChanged,
         ),
       ),
@@ -377,9 +601,17 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
-                    children: skills.isEmpty 
-                      ? [Text(isAr ? "لا توجد مهارات" : "No skills added", style: TextStyle(color: Colors.grey.shade400, fontSize: 12))]
-                      : skills.map((s) => _buildModernSkillChip(s)).toList(),
+                    children: skills.isEmpty
+                        ? [
+                            Text(
+                              isAr ? "لا توجد مهارات" : "No skills added",
+                              style: TextStyle(
+                                color: Colors.grey.shade400,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ]
+                        : skills.map((s) => _buildModernSkillChip(s)).toList(),
                   ),
                 ),
               ),
@@ -388,7 +620,10 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                 onTap: () => _showAddSkillDialog(context),
                 child: Container(
                   padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(color: primaryBlue, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: primaryBlue,
+                    shape: BoxShape.circle,
+                  ),
                   child: const Icon(Icons.add, color: Colors.white, size: 18),
                 ),
               ),
@@ -411,11 +646,22 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(skill, style: TextStyle(color: primaryBlue, fontSize: 12, fontWeight: FontWeight.w500)),
+          Text(
+            skill,
+            style: TextStyle(
+              color: primaryBlue,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           const SizedBox(width: 6),
           GestureDetector(
             onTap: () => setState(() => skills.remove(skill)),
-            child: Icon(Icons.close, size: 14, color: primaryBlue.withOpacity(0.6)),
+            child: Icon(
+              Icons.close,
+              size: 14,
+              color: primaryBlue.withOpacity(0.6),
+            ),
           ),
         ],
       ),
@@ -432,7 +678,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         content: TextField(
           controller: _skillController,
           autofocus: true,
-          decoration: InputDecoration(hintText: isAr ? "اسم المهارة..." : "Skill name..."),
+          decoration: InputDecoration(
+            hintText: isAr ? "اسم المهارة..." : "Skill name...",
+          ),
           onSubmitted: (val) {
             if (val.trim().isNotEmpty) {
               setState(() => skills.add(val.trim()));
@@ -442,7 +690,10 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
           },
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(isAr ? "إلغاء" : "Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(isAr ? "إلغاء" : "Cancel"),
+          ),
           ElevatedButton(
             onPressed: () {
               if (_skillController.text.trim().isNotEmpty) {
@@ -451,26 +702,61 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                 Navigator.pop(context);
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: primaryBlue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            child: Text(isAr ? "إضافة" : "Add", style: const TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryBlue,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(
+              isAr ? "إضافة" : "Add",
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildUploadArea({required String title, required IconData icon, required VoidCallback onTap}) {
+  Widget _buildUploadArea({
+    required String title,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       child: Container(
         height: 50,
         decoration: BoxDecoration(
-          color: Colors.white, 
-          borderRadius: BorderRadius.circular(15), 
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
           border: Border.all(color: Colors.grey.shade100),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, color: primaryBlue, size: 15), const SizedBox(width: 8), Flexible(child: Text(title, style: TextStyle(color: primaryBlue, fontWeight: FontWeight.bold, fontSize: 12), overflow: TextOverflow.ellipsis))]),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: primaryBlue, size: 15),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: primaryBlue,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -478,35 +764,87 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   Widget _buildSaveButton() {
     bool isAr = appLocalization.locale.languageCode == 'ar';
     return SizedBox(
-      width: double.infinity, height: 50,
+      width: double.infinity,
+      height: 50,
       child: ElevatedButton(
-        onPressed: isLoading ? null : () async {
-          if (selectedFaculty != null && selectedYear != null) {
-            setState(() => isLoading = true);
-            await Future.delayed(const Duration(seconds: 1));
-            studentService.faculty = selectedFaculty!;
-            studentService.specialty = selectedMajor ?? "";
-            studentService.graduationYear = selectedYear!;
-            studentService.program = selectedProgram;
-            studentService.skills = skills;
-            studentService.cvFileName = cvFileName;
-            if (profileImageBytes != null) studentService.profileImageBytes = profileImageBytes;
-            if (verificationFileData != null) {
-              studentService.verificationFileName = verificationFileName;
-              studentService.verificationFileData = verificationFileData;
-            }
-            if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen(userName: widget.userName)));
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isAr ? "يرجى إكمال البيانات" : "Please complete data"), backgroundColor: Colors.redAccent));
-          }
-        },
+        onPressed: isLoading
+            ? null
+            : () async {
+                if (selectedFaculty != null && selectedYear != null) {
+                  setState(() => isLoading = true);
+                  studentService.faculty = selectedFaculty!;
+                  studentService.specialty = selectedMajor ?? "";
+                  studentService.graduationYear = selectedYear!;
+                  studentService.program = selectedProgram;
+                  studentService.skills = skills;
+                  studentService.cvFileName = cvFileName;
+                  studentService.cvFileData = cvFileData;
+                  if (profileImageBytes != null)
+                    studentService.profileImageBytes = profileImageBytes;
+                  if (verificationFileData != null) {
+                    studentService.verificationFileName = verificationFileName;
+                    studentService.verificationFileData = verificationFileData;
+                  }
+                  try {
+                    final uid = AuthService().currentUid;
+                    if (uid != null) {
+                      await DatabaseService(uid: uid).updateUserData({
+                        'faculty': selectedFaculty,
+                        'specialty': selectedMajor ?? "",
+                        'graduationYear': selectedYear,
+                        'program': selectedProgram,
+                        'skills': skills,
+                        'studyStatus': studyStatus,
+                      });
+                    }
+                    if (mounted)
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              HomeScreen(userName: widget.userName),
+                        ),
+                      );
+                  } catch (e) {
+                    if (mounted)
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(e.toString()),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                  } finally {
+                    if (mounted) setState(() => isLoading = false);
+                  }
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isAr ? "يرجى إكمال البيانات" : "Please complete data",
+                      ),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              },
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryBlue, 
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          backgroundColor: primaryBlue,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
           elevation: 4,
           shadowColor: Colors.black26,
         ),
-        child: isLoading ? const CircularProgressIndicator(color: Colors.white) : Text(content['saveBtn'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+        child: isLoading
+            ? const CircularProgressIndicator(color: Colors.white)
+            : Text(
+                content['saveBtn'],
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'company_register_step2_screen.dart';
 import 'company_login_screen.dart';
 import '../../../app_localization.dart';
+import '../company_data.dart';
 
 class CompanyRegisterScreen extends StatefulWidget {
   const CompanyRegisterScreen({super.key});
@@ -148,6 +149,8 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
+                      CompanyData().email = _emailController.text;
+                      CompanyData().password = _passwordController.text;
                       Navigator.pushNamed(context, '/company_register_step2');
                     }
                   },

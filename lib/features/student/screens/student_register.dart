@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'complete_profile.dart';
 import '../../../core/student_service.dart';
 import '../../../app_localization.dart';
+import '../../../core/services/auth_service.dart';
 
 class StudentRegisterScreen extends StatefulWidget {
   const StudentRegisterScreen({super.key});
@@ -18,6 +19,7 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
   final _confirmPasswordController = TextEditingController();
 
   bool _isSubmitted = false;
+  bool _isLoading = false;
 
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
@@ -307,20 +309,50 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {
+        onPressed: _isLoading ? null : () async {
           setState(() {
             _isSubmitted = true;
           });
           if (_formKey.currentState!.validate()) {
-            studentService.name = _nameController.text;
-            studentService.email = _emailController.text;
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    CompleteProfileScreen(userName: _nameController.text),
-              ),
-            );
+            setState(() {
+              _isLoading = true;
+            });
+            try {
+              final authService = AuthService();
+              await authService.signUpWithEmailAndPassword(
+                email: _emailController.text.trim(),
+                password: _passwordController.text.trim(),
+                role: 'student',
+                additionalData: {
+                  'name': _nameController.text.trim(),
+                },
+              );
+              
+              studentService.name = _nameController.text.trim();
+              studentService.email = _emailController.text.trim();
+              
+              if (mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        CompleteProfileScreen(userName: _nameController.text),
+                  ),
+                );
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                );
+              }
+            } finally {
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                });
+              }
+            }
           }
         },
         style: ElevatedButton.styleFrom(
@@ -331,14 +363,16 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
           elevation: 4,
           shadowColor: Colors.black26,
         ),
-        child: Text(
-          texts['btnCreate'] ?? 'Create Account',
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
+        child: _isLoading
+            ? const CircularProgressIndicator(color: Colors.white)
+            : Text(
+                texts['btnCreate'] ?? 'Create Account',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
       ),
     );
   }

@@ -11,13 +11,23 @@ class StudentService {
   String specialty = "Computer Science";
   String? program = "General";
   String graduationYear = "2026";
-  List<String> skills = ["Teamwork", "Java", "Data analysis", "Critical thinking", "Time management", "Excel", "soft skills", "Laboratory techniques"];
+  List<String> skills = [
+    "Teamwork",
+    "Java",
+    "Data analysis",
+    "Critical thinking",
+    "Time management",
+    "Excel",
+    "soft skills",
+    "Laboratory techniques",
+  ];
   String? cvFileName;
   Uint8List? cvFileData;
-  String profileImage = "assets/images/pro.jpg"; 
+  String profileImage = "assets/images/pro.jpg";
   Uint8List? profileImageBytes;
-  String about = "Passionate Computer Science student with a focus on Flutter development. Eager to learn and contribute to innovative projects.";
-  
+  String about =
+      "Passionate Computer Science student with a focus on Flutter development. Eager to learn and contribute to innovative projects.";
+
   // Verification Document
   String? verificationFileName;
   Uint8List? verificationFileData;

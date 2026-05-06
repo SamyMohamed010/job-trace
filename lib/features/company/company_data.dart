@@ -34,6 +34,8 @@ class CompanyData {
   String overview = "A leading manufacturer and distributor of high-quality pharmaceutical products, dedicated to improving public health through innovative healthcare solutions";
   String location = "Cairo,Egypt";
   String website = "www.organic.com";
+  String email = "";
+  String password = "";
   
   XFile? logoImage;
   XFile? licenseImage;

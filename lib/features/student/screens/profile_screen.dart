@@ -1,6 +1,12 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
 import '../../../core/student_service.dart';
 import '../../widgets/language_toggle.dart';
 import '../../../app_localization.dart';
@@ -53,11 +59,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'doc', 'docx'],
+        withData: true,
       );
 
       if (result != null) {
         setState(() {
           studentService.cvFileName = result.files.single.name;
+          studentService.cvFileData = result.files.single.bytes;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("File selected: ${studentService.cvFileName}")),
@@ -68,6 +76,87 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SnackBar(content: Text("Failed to pick file"), backgroundColor: Colors.red),
       );
     }
+  }
+
+  Future<void> _viewCV() async {
+    bool isAr = appLocalization.locale.languageCode == 'ar';
+    if (studentService.cvFileData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isAr ? "لم يتم رفع سيرة ذاتية بعد" : "No CV uploaded yet"),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      if (kIsWeb) {
+        final String base64Content = base64Encode(studentService.cvFileData!);
+        final String fileName = studentService.cvFileName ?? "cv.pdf";
+        final String mimeType = fileName.endsWith(".pdf") ? "application/pdf" : "application/msword";
+        final String dataUri = 'data:$mimeType;base64,$base64Content';
+        
+        final Uri uri = Uri.parse(dataUri);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        } else {
+          _showCVPreviewDialog();
+        }
+      } else {
+        // Mobile/Desktop: Save to temp file and open
+        final tempDir = await getTemporaryDirectory();
+        final fileName = studentService.cvFileName ?? "cv.pdf";
+        final file = File('${tempDir.path}/$fileName');
+        await file.writeAsBytes(studentService.cvFileData!);
+        
+        final result = await OpenFilex.open(file.path);
+        if (result.type != ResultType.done) {
+          _showCVPreviewDialog();
+        }
+      }
+    } catch (e) {
+      _showCVPreviewDialog();
+    }
+  }
+
+  void _showCVPreviewDialog() {
+    bool isAr = appLocalization.locale.languageCode == 'ar';
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.description, color: primaryBlue),
+            const SizedBox(width: 10),
+            Text(isAr ? "معاينة الملف" : "File Preview"),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.picture_as_pdf, size: 60, color: Colors.redAccent),
+            const SizedBox(height: 15),
+            Text(studentService.cvFileName ?? "CV", style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Text(
+              isAr 
+                ? "تم العثور على ملف السيرة الذاتية. في النسخة التجريبية، يمكنك رؤية اسم الملف وتفاصيله." 
+                : "CV file found. In this preview, you can see the file name and details.",
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(isAr ? "إغلاق" : "Close", style: TextStyle(color: primaryBlue)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _pickProfileImage() async {
@@ -429,7 +518,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(skill, style: const TextStyle(fontSize: 12, color: Colors.black87)),
+          Flexible(
+            child: Text(
+              skill, 
+              style: const TextStyle(fontSize: 12, color: Colors.black87),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           if (_isEditMode) ...[
             const SizedBox(width: 5),
             GestureDetector(
@@ -472,7 +567,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Positioned(
                 bottom: 0,
                 left: 0,
-                child: Icon(Icons.visibility, color: Colors.grey.shade600, size: 18),
+                child: GestureDetector(
+                  onTap: _viewCV,
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    child: Icon(Icons.visibility, color: primaryBlue, size: 20),
+                  ),
+                ),
               ),
               if (_isEditMode)
                 Positioned(

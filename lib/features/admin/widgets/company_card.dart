@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/company.dart';
 import '../screens/company_details_screen.dart'; // تأكد من عمل Import للشاشة
 
@@ -62,16 +63,42 @@ class CompanyCard extends StatelessWidget {
                             color: Colors.black,
                           ),
                         ),
-                        if (company.isApproved)
+                        if (company.status == 'approved')
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.green.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
                               isAr ? "معتمد" : "Approved",
-                              style: const TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                color: Colors.green,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                        else if (company.status == 'rejected')
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              isAr ? "مرفوض" : "Rejected",
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                       ],
@@ -93,24 +120,84 @@ class CompanyCard extends StatelessWidget {
             children: [
               // زر View المربوط بصفحة التفاصيل
               Expanded(
-                child: _buildActionButton(isAr ? "عرض" : "View", Colors.grey[100]!, Colors.black, () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          CompanyDetailsScreen(company: company),
-                    ),
-                  );
-                }),
+                child: _buildActionButton(
+                  isAr ? "عرض" : "View",
+                  Colors.grey[100]!,
+                  Colors.black,
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            CompanyDetailsScreen(company: company),
+                      ),
+                    );
+                  },
+                ),
               ),
               const SizedBox(width: 8),
               if (!company.isApproved) ...[
                 Expanded(
-                  child: _buildActionButton(isAr ? "رفض" : "Reject", Colors.red[50]!, Colors.red, () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("${company.name} rejected")),
-                    );
-                  }),
+                  child: _buildActionButton(
+                    isAr ? "رفض" : "Reject",
+                    Colors.red[50]!,
+                    Colors.red,
+                    () async {
+                      if (company.id != null) {
+                        final TextEditingController reasonController =
+                            TextEditingController();
+                        await showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text(
+                              isAr ? "سبب الرفض" : "Rejection reason",
+                            ),
+                            content: TextField(
+                              controller: reasonController,
+                              minLines: 3,
+                              maxLines: 5,
+                              decoration: InputDecoration(
+                                hintText: isAr
+                                    ? "اكتب سبب الرفض هنا"
+                                    : "Enter the rejection reason",
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: Text(isAr ? "إلغاء" : "Cancel"),
+                              ),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  final reason = reasonController.text.trim();
+                                  if (reason.isEmpty) return;
+                                  await FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(company.id)
+                                      .update({
+                                        'isApproved': false,
+                                        'status': 'rejected',
+                                        'rejectionReason': reason,
+                                      });
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          "${company.name} rejected",
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  Navigator.of(context).pop();
+                                },
+                                child: Text(isAr ? "تأكيد" : "Confirm"),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    },
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -118,23 +205,48 @@ class CompanyCard extends StatelessWidget {
                     isAr ? "قبول" : "Approve",
                     const Color(0xFF229BD8),
                     Colors.white,
-                    () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("${company.name} approved successfully"), backgroundColor: Colors.green),
-                      );
+                    () async {
+                      if (company.id != null) {
+                        await FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(company.id)
+                            .update({'isApproved': true, 'status': 'approved'});
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                "${company.name} approved successfully",
+                              ),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      }
                     },
                   ),
                 ),
-              ] else 
+              ] else
                 Expanded(
                   child: _buildActionButton(
                     isAr ? "إلغاء الاعتماد" : "Revoke",
                     Colors.orange[50]!,
                     Colors.orange,
-                    () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Approval revoked for ${company.name}")),
-                      );
+                    () async {
+                      if (company.id != null) {
+                        await FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(company.id)
+                            .update({'isApproved': false, 'status': 'pending'});
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                "Approval revoked for ${company.name}",
+                              ),
+                            ),
+                          );
+                        }
+                      }
                     },
                   ),
                 ),

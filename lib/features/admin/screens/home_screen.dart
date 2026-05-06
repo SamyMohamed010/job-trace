@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/company.dart';
 import '../widgets/company_card.dart';
 import '../widgets/notification_button.dart';
@@ -50,12 +51,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 2),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 5)],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 5,
+                    ),
+                  ],
                 ),
                 child: ClipOval(
                   child: Image.asset(
                     'assets/images/logo.png',
-                    height: 40, width: 40,
+                    height: 40,
+                    width: 40,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) =>
                         const Icon(Icons.business, color: kPrimaryBlue),
@@ -102,21 +109,42 @@ class _HomeScreenState extends State<HomeScreen> {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: Text(isArabic ? "تأكيد تسجيل الخروج" : "Confirm Logout", style: const TextStyle(color: kPrimaryBlue, fontWeight: FontWeight.bold)),
-                    content: Text(isArabic ? "هل أنت متأكد أنك تريد تسجيل الخروج؟" : "Are you sure you want to log out?"),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    title: Text(
+                      isArabic ? "تأكيد تسجيل الخروج" : "Confirm Logout",
+                      style: const TextStyle(
+                        color: kPrimaryBlue,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    content: Text(
+                      isArabic
+                          ? "هل أنت متأكد أنك تريد تسجيل الخروج؟"
+                          : "Are you sure you want to log out?",
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: Text(isArabic ? "إلغاء" : "Cancel", style: const TextStyle(color: kGreyText)),
+                        child: Text(
+                          isArabic ? "إلغاء" : "Cancel",
+                          style: const TextStyle(color: kGreyText),
+                        ),
                       ),
                       ElevatedButton(
                         onPressed: () {
                           Navigator.pop(context); // close dialog
                           Navigator.pop(context); // close admin screen (logout)
                         },
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade50, elevation: 0),
-                        child: Text(isArabic ? "خروج" : "Logout", style: const TextStyle(color: Colors.red)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade50,
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          isArabic ? "خروج" : "Logout",
+                          style: const TextStyle(color: Colors.red),
+                        ),
                       ),
                     ],
                   ),
@@ -160,92 +188,112 @@ class CompanyListContent extends StatelessWidget {
   Widget build(BuildContext context) {
     bool isArabic = Directionality.of(context) == TextDirection.rtl;
 
-    final List<Company> companies = [
-      Company(
-        name: "Amazon",
-        email: "amazon@gmail.com",
-        brandColor: kOrangeAccent,
-        logoUrl: "https://img.icons8.com/color/512/amazon.png",
-        location: isArabic ? "سياتل، واشنطن" : "Seattle, Washington",
-        isApproved: true,
-      ),
-      Company(
-        name: "Facebook",
-        email: "contact@facebook.com",
-        brandColor: const Color(0xFF1877F2),
-        logoUrl: "https://img.icons8.com/color/512/facebook-new.png",
-        location: isArabic
-            ? "مينلو بارك، كاليفورنيا"
-            : "Menlo Park, California",
-        isApproved: false,
-      ),
-      Company(
-        name: "LinkedIn",
-        email: "contact@linkedin.com",
-        brandColor: const Color(0xFF0A66C2),
-        logoUrl: "https://img.icons8.com/color/512/linkedin.png",
-        location: isArabic ? "ساني فيل، كاليفورنيا" : "Sunnyvale, California",
-        isApproved: false,
-      ),
-    ];
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'company')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildAvailableJobsCard(isArabic),
-            const SizedBox(height: 25),
-            Text(
-              isArabic
-                  ? "مراجعة واعتماد الشركات الجديدة"
-                  : "Review and approve registrations",
-              style: const TextStyle(color: kGreyText, fontSize: 13, fontWeight: FontWeight.w600),
+        if (snapshot.hasError) {
+          return const Center(child: Text('Error loading companies'));
+        }
+
+        final List<Company> companies =
+            snapshot.data?.docs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return Company(
+                id: doc.id,
+                name: data['name'] ?? 'Unknown',
+                email: data['email'] ?? 'No email',
+                brandColor: kPrimaryBlue,
+                logoUrl: "https://img.icons8.com/color/512/business.png",
+                location: data['location'] ?? 'Unknown location',
+                status: data['status'] ?? 'pending',
+                isApproved: data['isApproved'] ?? false,
+              );
+            }).toList() ??
+            [];
+
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildAvailableJobsCard(isArabic),
+                const SizedBox(height: 25),
+                Text(
+                  isArabic
+                      ? "مراجعة واعتماد الشركات الجديدة"
+                      : "Review and approve registrations",
+                  style: const TextStyle(
+                    color: kGreyText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                if (companies.isEmpty)
+                  Center(
+                    child: Text(
+                      isArabic ? "لا توجد شركات بعد" : "No companies yet",
+                    ),
+                  )
+                else
+                  ...companies.map((comp) => CompanyCard(company: comp)),
+              ],
             ),
-            const SizedBox(height: 15),
-            ...companies.map((comp) => CompanyCard(company: comp)),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildAvailableJobsCard(bool isArabic) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: kPrimaryBlue,
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('jobs').snapshots(),
+      builder: (context, snapshot) {
+        final jobCount = snapshot.data?.docs.length ?? 0;
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: kPrimaryBlue,
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                isArabic ? "الوظائف المتاحة" : "Available Jobs",
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isArabic ? "الوظائف المتاحة" : "Available Jobs",
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    jobCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              const Text(
-                "12,450",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+              Icon(
+                Icons.stacked_line_chart,
+                color: Colors.white.withOpacity(0.5),
+                size: 40,
               ),
             ],
           ),
-          Icon(
-            Icons.stacked_line_chart,
-            color: Colors.white.withValues(alpha: 0.5),
-            size: 40,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

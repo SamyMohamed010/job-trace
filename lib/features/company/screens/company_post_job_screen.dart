@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../company_data.dart';
 import 'company_notifications_sheet.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../shared/services/location_service.dart';
 
 class CompanyPostJobScreen extends StatefulWidget {
@@ -200,7 +202,33 @@ class _CompanyPostJobScreenState extends State<CompanyPostJobScreen> {
                             return;
                           }
 
-                          // Add the job to CompanyData
+                          // Save to Firebase
+                          final user = FirebaseAuth.instance.currentUser;
+                          if (user != null) {
+                            FirebaseFirestore.instance.collection('users').doc(user.uid).get().then((doc) {
+                              String companyName = 'Unknown Company';
+                              if (doc.exists) {
+                                companyName = doc.data()?['name'] ?? 'Unknown Company';
+                              }
+
+                              FirebaseFirestore.instance.collection('jobs').add({
+                                'companyId': user.uid,
+                                'companyName': companyName,
+                                'title': _titleController.text,
+                                'description': _descriptionController.text,
+                                'requirements': _requirementsController.text,
+                                'location': _locationController.text,
+                                'locationType': selectedLocationType,
+                                'jobType': selectedJobType,
+                                'salaryFrom': _salaryFromController.text,
+                                'salaryTo': _salaryToController.text,
+                                'deadline': _deadlineController.text,
+                                'createdAt': FieldValue.serverTimestamp(),
+                              });
+                            });
+                          }
+
+                          // Add the job to CompanyData (local cache)
                           final newJob = JobModel(
                             title: _titleController.text,
                             description: _descriptionController.text,

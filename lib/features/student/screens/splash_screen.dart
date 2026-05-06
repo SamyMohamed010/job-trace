@@ -16,7 +16,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // المؤقت: ينتظر 3 ثوانٍ ثم ينتقل لصفحة تسجيل الدخول
+    // المؤقت: ينتظر 4 ثوانٍ ثم ينتقل لصفحة تسجيل الدخول
     Timer(const Duration(seconds: 4), () {
       if (mounted) {
         Navigator.pushReplacement(

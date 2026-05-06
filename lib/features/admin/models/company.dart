@@ -6,7 +6,9 @@ class Company {
   final Color brandColor;
   final String logoUrl;
   final String location;
+  final String status;
   bool isApproved;
+  String? id;
 
   Company({
     required this.name,
@@ -14,6 +16,8 @@ class Company {
     required this.brandColor,
     required this.logoUrl,
     required this.location,
+    this.status = 'pending',
     this.isApproved = false,
+    this.id,
   });
 }

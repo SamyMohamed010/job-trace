@@ -266,9 +266,13 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                       stream: FirebaseFirestore.instance
                           .collection('jobs')
                           .where('companyId', isEqualTo: user?.uid)
-                          .orderBy('createdAt', descending: true)
                           .snapshots(),
                       builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
+                          );
+                        }
                         if (snapshot.connectionState == ConnectionState.waiting) {
                           return const Center(child: CircularProgressIndicator());
                         }
@@ -283,7 +287,15 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                           );
                         }
 
-                        final jobs = snapshot.data!.docs;
+                        final jobs = snapshot.data!.docs.toList();
+                        jobs.sort((a, b) {
+                          final aData = a.data() as Map<String, dynamic>;
+                          final bData = b.data() as Map<String, dynamic>;
+                          final aTime = aData['createdAt'] as Timestamp?;
+                          final bTime = bData['createdAt'] as Timestamp?;
+                          if (aTime == null || bTime == null) return 0;
+                          return bTime.compareTo(aTime);
+                        });
 
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,12 +384,18 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
           ),
           const SizedBox(height: 8),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.location_on, color: Colors.redAccent, size: 16),
+              const Padding(
+                padding: EdgeInsets.only(top: 2.0),
+                child: Icon(Icons.location_on, color: Colors.redAccent, size: 16),
+              ),
               const SizedBox(width: 4),
-              Text(
-                "${job.location} (${job.locationType})",
-                style: const TextStyle(color: Color(0xFF7E848E), fontSize: 14),
+              Expanded(
+                child: Text(
+                  "${job.location} (${job.locationType})",
+                  style: const TextStyle(color: Color(0xFF7E848E), fontSize: 14),
+                ),
               ),
             ],
           ),
@@ -395,17 +413,14 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
               ),
               GestureDetector(
                 onTap: () async {
-                  final index = CompanyData().jobs.indexOf(job);
-                  if (index != -1) {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CompanyEditJobScreen(job: job, jobIndex: index),
-                      ),
-                    );
-                    if (result == true) {
-                      _refresh();
-                    }
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CompanyEditJobScreen(job: job),
+                    ),
+                  );
+                  if (result == true) {
+                    _refresh();
                   }
                 },
                 child: Container(
@@ -460,10 +475,19 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                           child: const Text("Cancel"),
                         ),
                         TextButton(
-                          onPressed: () {
-                            CompanyData().jobs.remove(job);
-                            Navigator.pop(context);
-                            _refresh();
+                          onPressed: () async {
+                            if (job.id != null && job.id!.isNotEmpty) {
+                              try {
+                                await FirebaseFirestore.instance.collection('jobs').doc(job.id).delete();
+                              } catch (e) {
+                                debugPrint('Error deleting job: $e');
+                              }
+                            }
+                            CompanyData().jobs.removeWhere((j) => j.id == job.id || j == job);
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              _refresh();
+                            }
                           },
                           child: const Text("Delete", style: TextStyle(color: Colors.red)),
                         ),

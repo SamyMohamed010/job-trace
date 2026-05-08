@@ -415,9 +415,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           'targetId',
                           isEqualTo: FirebaseAuth.instance.currentUser?.uid,
                         )
-                        .orderBy('createdAt', descending: true)
                         .snapshots(),
                     builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}', style: TextStyle(color: Colors.red)));
+                      }
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       }
@@ -430,10 +432,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       }
 
+                      final notificationsList = snapshot.data!.docs.toList();
+                      notificationsList.sort((a, b) {
+                        final aData = a.data() as Map<String, dynamic>;
+                        final bData = b.data() as Map<String, dynamic>;
+                        final aTime = aData['createdAt'] as Timestamp?;
+                        final bTime = bData['createdAt'] as Timestamp?;
+                        if (aTime == null || bTime == null) return 0;
+                        return bTime.compareTo(aTime);
+                      });
+
                       return ListView.builder(
-                        itemCount: snapshot.data!.docs.length,
+                        itemCount: notificationsList.length,
                         itemBuilder: (context, index) {
-                          var doc = snapshot.data!.docs[index];
+                          var doc = notificationsList[index];
                           var data = doc.data() as Map<String, dynamic>;
                           return _buildNotificationItem(
                             title: data['title'] ?? 'Notification',
@@ -620,19 +632,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 8),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          size: 16,
-                          color: grayText,
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2.0),
+                          child: Icon(
+                            Icons.location_on_outlined,
+                            size: 16,
+                            color: grayText,
+                          ),
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          job.location,
-                          style: TextStyle(
-                            color: grayText,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
+                        Expanded(
+                          child: Text(
+                            job.location,
+                            style: TextStyle(
+                              color: grayText,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],

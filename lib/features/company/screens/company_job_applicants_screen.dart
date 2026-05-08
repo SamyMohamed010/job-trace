@@ -39,9 +39,11 @@ class CompanyJobApplicantsScreen extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection('applications')
             .where('jobId', isEqualTo: jobId)
-            .orderBy('appliedAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+          }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -50,7 +52,15 @@ class CompanyJobApplicantsScreen extends StatelessWidget {
             return _buildEmptyState();
           }
 
-          final apps = snapshot.data!.docs;
+          final apps = snapshot.data!.docs.toList();
+          apps.sort((a, b) {
+            final aData = a.data() as Map<String, dynamic>;
+            final bData = b.data() as Map<String, dynamic>;
+            final aTime = aData['appliedAt'] as Timestamp?;
+            final bTime = bData['appliedAt'] as Timestamp?;
+            if (aTime == null || bTime == null) return 0;
+            return bTime.compareTo(aTime);
+          });
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -75,9 +85,11 @@ class CompanyJobApplicantsScreen extends StatelessWidget {
       future: FirebaseFirestore.instance.collection('users').doc(studentId).get(),
       builder: (context, studentSnapshot) {
         String studentName = "Loading...";
+        String profileImageUrl = "";
         if (studentSnapshot.hasData && studentSnapshot.data!.exists) {
           final sData = studentSnapshot.data!.data() as Map<String, dynamic>;
           studentName = sData['name'] ?? "Unknown Student";
+          profileImageUrl = sData['profileImageUrl'] ?? sData['imageUrl'] ?? "";
         }
 
         return Container(
@@ -92,9 +104,10 @@ class CompanyJobApplicantsScreen extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const CircleAvatar(
-                    backgroundColor: Color(0xFFEBEEF4),
-                    child: Icon(Icons.person, color: Color(0xFF229BD8)),
+                  CircleAvatar(
+                    backgroundColor: const Color(0xFFEBEEF4),
+                    backgroundImage: profileImageUrl.isNotEmpty ? NetworkImage(profileImageUrl) : null,
+                    child: profileImageUrl.isEmpty ? const Icon(Icons.person, color: const Color(0xFF229BD8)) : null,
                   ),
                   const SizedBox(width: 12),
                   Expanded(

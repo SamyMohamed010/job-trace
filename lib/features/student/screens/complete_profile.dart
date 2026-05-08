@@ -40,6 +40,24 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
   Map<String, dynamic> get content {
     bool isAr = appLocalization.locale.languageCode == 'ar';
+
+    List<String> getStudentYears() {
+      int years = 4;
+      if (selectedFaculty == "Engineering" || selectedFaculty == "كلية الهندسة") {
+        years = 5;
+      } else if (selectedFaculty == "Medicine" || selectedFaculty == "كلية الطب") {
+        years = 7;
+      }
+      
+      if (isAr) {
+        final arYears = ["السنة الأولى", "السنة الثانية", "السنة الثالثة", "السنة الرابعة", "السنة الخامسة", "السنة السادسة", "السنة السابعة"];
+        return arYears.take(years).toList();
+      } else {
+        final enYears = ["First Year", "Second Year", "Third Year", "Fourth Year", "Fifth Year", "Sixth Year", "Seventh Year"];
+        return enYears.take(years).toList();
+      }
+    }
+
     return {
       'title': isAr ? "استكمال الملف الشخصي" : "Complete Your Profile",
       'statusLabel': isAr ? "الحالة الدراسية" : "Study Status",
@@ -59,32 +77,14 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
           : "Univ. Verification",
       'imgLabel': isAr ? "صورة الملف" : "Profile Image",
       'saveBtn': isAr ? "حفظ واستمرار" : "Save & Continue",
-      'studentYears': isAr
-          ? [
-              "السنة الأولى",
-              "السنة الثانية",
-              "السنة الثالثة",
-              "السنة الرابعة",
-              if (selectedFaculty == "كلية الهندسة" ||
-                  selectedFaculty == "Engineering")
-                "السنة الخامسة",
-            ]
-          : [
-              "First Year",
-              "Second Year",
-              "Third Year",
-              "Fourth Year",
-              if (selectedFaculty == "Engineering" ||
-                  selectedFaculty == "كلية الهندسة")
-                "Fifth Year",
-            ],
+      'studentYears': getStudentYears(),
       'gradYears': List.generate(
         10,
         (index) => (currentYear - index).toString(),
       ),
       'faculties': isAr
-          ? ["كلية الحاسبات", "كلية الهندسة", "كلية العلوم", "كلية التجارة"]
-          : ["Computers & Info", "Engineering", "Science", "Commerce"],
+          ? ["كلية الطب", "كلية طب الأسنان", "كلية الصيدلة", "كلية الهندسة", "كلية العلوم", "كلية الحاسبات والمعلومات", "كلية التجارة", "كلية الألسن", "كلية الآداب", "كلية الحقوق", "كلية الزراعة", "كلية التربية", "كلية البنات", "كلية التمريض", "كلية التربية النوعية", "كلية الإعلام"]
+          : ["Medicine", "Dentistry", "Pharmacy", "Engineering", "Science", "Computers & Info", "Commerce", "Al-Alsun", "Arts", "Law", "Agriculture", "Education", "Women's College", "Nursing", "Specific Education", "Mass Communication"],
     };
   }
 

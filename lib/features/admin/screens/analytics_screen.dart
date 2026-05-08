@@ -64,9 +64,9 @@ class AnalyticsScreen extends StatelessWidget {
                         color: Color(0xFF4CAF50), // درجة أخضر مريحة
                         shape: BoxShape.circle,
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
-                          "\$percent%",
+                          "$percent%",
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -99,16 +99,65 @@ class AnalyticsScreen extends StatelessWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 30),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // استخدمنا درجات ألوان متناسقة مع الهوية الجديدة
-              Expanded(child: _buildBarChartItem("Pharmacist", 120, const Color(0xFF1A11A3))),
-              Expanded(child: _buildBarChartItem("Assistant", 80, const Color(0xFF2C116B))),
-              Expanded(child: _buildBarChartItem("Intern", 50, const Color(0xFFB01E7E))),
-              Expanded(child: _buildBarChartItem("Manager", 70, const Color(0xFFFDA00C))),
-            ],
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('jobs').snapshots(),
+            builder: (context, jobSnapshot) {
+              if (jobSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              
+              final jobDocs = jobSnapshot.data?.docs ?? [];
+              final Map<String, int> roleCounts = {};
+              
+              // Group by job title
+              for (var doc in jobDocs) {
+                final data = doc.data() as Map<String, dynamic>;
+                final title = data['title']?.toString() ?? 'Other';
+                
+                // Get the first word or main part of the title for cleaner display
+                final shortTitle = title.split(' ').first;
+                
+                roleCounts[shortTitle] = (roleCounts[shortTitle] ?? 0) + 1;
+              }
+              
+              // Sort by count descending
+              final sortedRoles = roleCounts.entries.toList()
+                ..sort((a, b) => b.value.compareTo(a.value));
+              
+              // Get top 4
+              final topRoles = sortedRoles.take(4).toList();
+              
+              // Colors for the bars
+              final colors = [
+                const Color(0xFF1A11A3),
+                const Color(0xFF2C116B),
+                const Color(0xFFB01E7E),
+                const Color(0xFFFDA00C),
+              ];
+              
+              // Calculate max count for scaling (min 1 to avoid division by zero)
+              final maxCount = topRoles.isNotEmpty ? topRoles.first.value : 1;
+              final maxHeight = 120.0;
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: topRoles.isEmpty 
+                  ? [const Text("No jobs available to analyze")]
+                  : List.generate(topRoles.length, (index) {
+                      final role = topRoles[index];
+                      // Scale height proportional to max count (min height 30)
+                      final height = (role.value / maxCount) * maxHeight;
+                      return Expanded(
+                        child: _buildBarChartItem(
+                          role.key,
+                          height < 30 ? 30 : height, // Ensure minimum visibility
+                          colors[index % colors.length]
+                        ),
+                      );
+                    }),
+              );
+            },
           ),
         ],
       ),

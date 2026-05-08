@@ -85,9 +85,11 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                   stream: FirebaseFirestore.instance
                       .collection('applications')
                       .where('studentId', isEqualTo: user?.uid)
-                      .orderBy('appliedAt', descending: true)
                       .snapshots(),
                   builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+                    }
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
@@ -99,10 +101,21 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                       );
                     }
 
-                    var docs = snapshot.data!.docs;
+                    var docs = snapshot.data!.docs.toList();
+                    
+                    // Client-side sorting
+                    docs.sort((a, b) {
+                      final aData = a.data() as Map<String, dynamic>;
+                      final bData = b.data() as Map<String, dynamic>;
+                      final aTime = aData['appliedAt'] as Timestamp?;
+                      final bTime = bData['appliedAt'] as Timestamp?;
+                      if (aTime == null || bTime == null) return 0;
+                      return bTime.compareTo(aTime);
+                    });
+
                     if (selectedFilter != "All") {
                       docs = docs
-                          .where((d) => d['status'] == selectedFilter)
+                          .where((d) => (d.data() as Map<String, dynamic>)['status'] == selectedFilter)
                           .toList();
                     }
 

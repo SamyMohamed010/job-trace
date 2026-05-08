@@ -19,7 +19,26 @@ class _CompanyRegisterStep2ScreenState extends State<CompanyRegisterStep2Screen>
   final TextEditingController _websiteController = TextEditingController();
 
   String? selectedIndustry;
-  final List<String> industries = ["Software", "Medical", "Engineering", "Education"];
+  final List<String> industries = [
+    "Information Technology", 
+    "Software Development", 
+    "Medical & Healthcare", 
+    "Engineering", 
+    "Education & Training", 
+    "Finance & Banking", 
+    "Retail & E-commerce", 
+    "Marketing & Advertising", 
+    "Telecommunications", 
+    "Manufacturing", 
+    "Real Estate", 
+    "Consulting", 
+    "Media & Entertainment", 
+    "Logistics & Supply Chain", 
+    "Tourism & Hospitality", 
+    "Agriculture", 
+    "Energy & Utilities", 
+    "Other"
+  ];
 
   @override
   void dispose() {
@@ -139,6 +158,10 @@ class _CompanyRegisterStep2ScreenState extends State<CompanyRegisterStep2Screen>
               _websiteController,
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Please enter company website';
+                final urlPattern = r'^(https?:\/\/)?([\w\-]+(\.[\w\-]+)+)([\w\-\.,@?^=%&:/~\+#]*[\w\-\@?^=%&/~\+#])?$';
+                if (!RegExp(urlPattern, caseSensitive: false).hasMatch(value)) {
+                  return 'Please enter a valid URL (e.g. www.example.com)';
+                }
                 return null;
               },
             ),
@@ -296,6 +319,7 @@ class _CompanyRegisterStep2ScreenState extends State<CompanyRegisterStep2Screen>
           value: selectedIndustry,
           hint: const Text("Select Industry", style: TextStyle(color: Color(0xFF7E848E))),
           isExpanded: true,
+          dropdownColor: Colors.white,
           icon: const Icon(Icons.arrow_drop_down, color: Color(0xFFFDA00C)),
           items: industries.map((item) => DropdownMenuItem(
             value: item, 

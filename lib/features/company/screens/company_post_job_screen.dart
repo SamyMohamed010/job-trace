@@ -193,7 +193,7 @@ class _CompanyPostJobScreenState extends State<CompanyPostJobScreen> {
                   child: SizedBox(
                     width: 150,
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (_formKey.currentState!.validate()) {
                           if (selectedLocationType == null || selectedJobType == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -202,10 +202,22 @@ class _CompanyPostJobScreenState extends State<CompanyPostJobScreen> {
                             return;
                           }
 
+                          // Save text values before async operations
+                          final title = _titleController.text;
+                          final description = _descriptionController.text;
+                          final requirements = _requirementsController.text;
+                          final location = _locationController.text;
+                          final locationType = selectedLocationType!;
+                          final jobType = selectedJobType!;
+                          final salaryFrom = _salaryFromController.text;
+                          final salaryTo = _salaryToController.text;
+                          final deadline = _deadlineController.text;
+
                           // Save to Firebase
                           final user = FirebaseAuth.instance.currentUser;
                           if (user != null) {
-                            FirebaseFirestore.instance.collection('users').doc(user.uid).get().then((doc) {
+                            try {
+                              final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
                               String companyName = 'Unknown Company';
                               String logoUrl = '';
                               if (doc.exists) {
@@ -213,35 +225,42 @@ class _CompanyPostJobScreenState extends State<CompanyPostJobScreen> {
                                 logoUrl = doc.data()?['logoUrl'] ?? '';
                               }
 
-                              FirebaseFirestore.instance.collection('jobs').add({
+                              await FirebaseFirestore.instance.collection('jobs').add({
                                 'companyId': user.uid,
                                 'companyName': companyName,
                                 'companyLogoUrl': logoUrl,
-                                'title': _titleController.text,
-                                'description': _descriptionController.text,
-                                'requirements': _requirementsController.text,
-                                'location': _locationController.text,
-                                'locationType': selectedLocationType,
-                                'jobType': selectedJobType,
-                                'salaryFrom': _salaryFromController.text,
-                                'salaryTo': _salaryToController.text,
-                                'deadline': _deadlineController.text,
+                                'title': title,
+                                'description': description,
+                                'requirements': requirements,
+                                'location': location,
+                                'locationType': locationType,
+                                'jobType': jobType,
+                                'salaryFrom': salaryFrom,
+                                'salaryTo': salaryTo,
+                                'deadline': deadline,
                                 'createdAt': FieldValue.serverTimestamp(),
                               });
-                            });
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error posting job: $e')),
+                                );
+                              }
+                              return;
+                            }
                           }
 
                           // Add the job to CompanyData (local cache)
                           final newJob = JobModel(
-                            title: _titleController.text,
-                            description: _descriptionController.text,
-                            requirements: _requirementsController.text,
-                            location: _locationController.text,
-                            locationType: selectedLocationType!,
-                            jobType: selectedJobType!,
-                            salaryFrom: _salaryFromController.text,
-                            salaryTo: _salaryToController.text,
-                            deadline: _deadlineController.text,
+                            title: title,
+                            description: description,
+                            requirements: requirements,
+                            location: location,
+                            locationType: locationType,
+                            jobType: jobType,
+                            salaryFrom: salaryFrom,
+                            salaryTo: salaryTo,
+                            deadline: deadline,
                           );
 
                           CompanyData().jobs.add(newJob);

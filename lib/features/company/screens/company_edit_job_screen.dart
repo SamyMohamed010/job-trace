@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../company_data.dart';
 import 'company_notifications_sheet.dart';
 
 class CompanyEditJobScreen extends StatefulWidget {
   final JobModel job;
-  final int jobIndex;
+  final int? jobIndex;
 
-  const CompanyEditJobScreen({super.key, required this.job, required this.jobIndex});
+  const CompanyEditJobScreen({super.key, required this.job, this.jobIndex});
 
   @override
   _CompanyEditJobScreenState createState() => _CompanyEditJobScreenState();
@@ -194,7 +195,7 @@ class _CompanyEditJobScreenState extends State<CompanyEditJobScreen> {
                   child: SizedBox(
                     width: 150,
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (_formKey.currentState!.validate()) {
                           if (selectedLocationType == null || selectedJobType == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -205,6 +206,7 @@ class _CompanyEditJobScreenState extends State<CompanyEditJobScreen> {
 
                           // Update the job in CompanyData
                           final updatedJob = JobModel(
+                            id: widget.job.id,
                             title: _titleController.text,
                             description: _descriptionController.text,
                             requirements: _requirementsController.text,
@@ -216,13 +218,44 @@ class _CompanyEditJobScreenState extends State<CompanyEditJobScreen> {
                             deadline: _deadlineController.text,
                           );
 
-                          CompanyData().jobs[widget.jobIndex] = updatedJob;
+                          if (widget.job.id != null && widget.job.id!.isNotEmpty) {
+                            try {
+                              await FirebaseFirestore.instance.collection('jobs').doc(widget.job.id).update({
+                                'title': updatedJob.title,
+                                'description': updatedJob.description,
+                                'requirements': updatedJob.requirements,
+                                'location': updatedJob.location,
+                                'locationType': updatedJob.locationType,
+                                'jobType': updatedJob.jobType,
+                                'salaryFrom': updatedJob.salaryFrom,
+                                'salaryTo': updatedJob.salaryTo,
+                                'deadline': updatedJob.deadline,
+                              });
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error updating job: $e')),
+                                );
+                              }
+                              return;
+                            }
+                          }
 
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Job Updated Successfully!')),
-                          );
-                          
-                          Navigator.pop(context, true);
+                          if (widget.jobIndex != null && widget.jobIndex! >= 0 && widget.jobIndex! < CompanyData().jobs.length) {
+                            CompanyData().jobs[widget.jobIndex!] = updatedJob;
+                          } else {
+                            final index = CompanyData().jobs.indexWhere((j) => j.id == widget.job.id);
+                            if (index != -1) {
+                              CompanyData().jobs[index] = updatedJob;
+                            }
+                          }
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Job Updated Successfully!')),
+                            );
+                            Navigator.pop(context, true);
+                          }
                         }
                       },
                       style: ElevatedButton.styleFrom(

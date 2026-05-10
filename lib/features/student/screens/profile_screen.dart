@@ -415,7 +415,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   const SizedBox(height: 20),
                   _buildProfileHeader(),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
+
+                  // ===== Verification Section =====
+                  if (!studentService.isVerified)
+                    _buildVerificationSection(isAr),
+
+                  const SizedBox(height: 10),
                   const Divider(indent: 50, endIndent: 50, thickness: 1),
                   const SizedBox(height: 20),
 
@@ -570,43 +576,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         const SizedBox(height: 10),
 
-        // Verification Status Bar
-        if (!studentService.isVerified) ...[
-          GestureDetector(
-            onTap: (studentService.verificationFileData == null && studentService.verificationUrl == null)
-                ? _pickVerification
-                : _pickCV,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.amber.shade100,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.upload_file, size: 14, color: Colors.orange),
-                  const SizedBox(width: 5),
-                  Text(
-                    (studentService.verificationFileData == null && studentService.verificationUrl == null)
-                        ? (isAr
-                              ? "ارفع إثبات القيد للتوثيق"
-                              : "Upload verification doc")
-                        : (isAr
-                              ? "ارفع السيرة الذاتية للتوثيق"
-                              : "Upload CV for verification"),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-        ],
 
         // Education Details
         if (_isEditMode) ...[
@@ -652,6 +621,212 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ],
     );
+  }
+
+  Widget _buildVerificationSection(bool isAr) {
+    final bool hasCv = studentService.cvFileData != null || (studentService.cvUrl != null && studentService.cvUrl!.isNotEmpty);
+    final bool hasVerification = studentService.verificationFileData != null || (studentService.verificationUrl != null && studentService.verificationUrl!.isNotEmpty);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.amber.shade50,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.amber.shade200, width: 1.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.verified_user_outlined, color: Colors.orange, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isAr ? "توثيق الحساب" : "Verify Your Account",
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              isAr
+                  ? "ارفع سيرتك الذاتية وإثبات القيد أو الشهادة لتتمكن من التقديم على الوظائف."
+                  : "Upload your CV and enrollment proof/certificate to apply for jobs.",
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+            const SizedBox(height: 14),
+
+            // CV Upload Button
+            _buildUploadTile(
+              isAr: isAr,
+              label: isAr ? "السيرة الذاتية (CV)" : "CV / Resume",
+              isDone: hasCv,
+              icon: Icons.description_outlined,
+              onTap: _pickAndVerify,
+            ),
+            const SizedBox(height: 10),
+
+            // Verification Doc Button
+            _buildUploadTile(
+              isAr: isAr,
+              label: isAr ? "إثبات القيد / الشهادة" : "Enrollment Proof / Certificate",
+              isDone: hasVerification,
+              icon: Icons.school_outlined,
+              onTap: _pickVerificationAndSave,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUploadTile({
+    required bool isAr,
+    required String label,
+    required bool isDone,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isDone ? Colors.green.shade50 : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDone ? Colors.green.shade300 : Colors.grey.shade300,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: isDone ? Colors.green : Colors.grey),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isDone ? Colors.green.shade700 : Colors.black87,
+                ),
+              ),
+            ),
+            Icon(
+              isDone ? Icons.check_circle : Icons.upload_file,
+              color: isDone ? Colors.green : const Color(0xFF229BD8),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndVerify() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx'],
+        withData: true,
+      );
+      if (result != null) {
+        setState(() {
+          studentService.cvFileName = result.files.single.name;
+          studentService.cvFileData = result.files.single.bytes;
+        });
+        await _trySaveVerificationIfComplete();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _pickVerificationAndSave() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'png', 'jpeg'],
+        withData: true,
+      );
+      if (result != null) {
+        setState(() {
+          studentService.verificationFileName = result.files.single.name;
+          studentService.verificationFileData = result.files.single.bytes;
+        });
+        await _trySaveVerificationIfComplete();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _trySaveVerificationIfComplete() async {
+    bool isAr = appLocalization.locale.languageCode == 'ar';
+    final bool hasCv = studentService.cvFileData != null || (studentService.cvUrl != null && studentService.cvUrl!.isNotEmpty);
+    final bool hasVerification = studentService.verificationFileData != null || (studentService.verificationUrl != null && studentService.verificationUrl!.isNotEmpty);
+
+    if (!hasCv || !hasVerification) return;
+
+    // Show loading snackbar
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(isAr ? "جاري رفع الملفات والتوثيق..." : "Uploading files and verifying..."),
+      duration: const Duration(seconds: 5),
+    ));
+
+    try {
+      String? newCvUrl = studentService.cvUrl;
+      if (studentService.cvFileData != null) {
+        newCvUrl = await _uploadToCloudinary(
+          studentService.cvFileData,
+          studentService.cvFileName ?? 'cv_${DateTime.now().millisecondsSinceEpoch}.pdf',
+          'student_cvs',
+          resourceType: 'auto',
+        );
+        if (newCvUrl != null) {
+          studentService.cvUrl = newCvUrl;
+        }
+      }
+
+      String? newVerificationUrl = studentService.verificationUrl;
+      if (studentService.verificationFileData != null) {
+        newVerificationUrl = await _uploadToCloudinary(
+          studentService.verificationFileData,
+          studentService.verificationFileName ?? 'verification_${DateTime.now().millisecondsSinceEpoch}.pdf',
+          'student_verifications',
+          resourceType: 'auto',
+        );
+        if (newVerificationUrl != null) {
+          studentService.verificationUrl = newVerificationUrl;
+        }
+      }
+
+      final uid = AuthService().currentUid;
+      if (uid != null) {
+        await DatabaseService(uid: uid).updateUserData({
+          if (newCvUrl != null) 'cvUrl': newCvUrl,
+          if (newCvUrl != null) 'cvFileName': studentService.cvFileName,
+          if (newVerificationUrl != null) 'verificationUrl': newVerificationUrl,
+          if (newVerificationUrl != null) 'verificationFileName': studentService.verificationFileName,
+          'isVerified': true,
+        });
+      }
+
+      setState(() {
+        studentService.isVerified = true;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isAr ? "✅ تم توثيق حسابك بنجاح!" : "✅ Account verified successfully!"),
+        backgroundColor: Colors.green,
+      ));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isAr ? "حدث خطأ أثناء التوثيق" : "Error during verification: $e"),
+        backgroundColor: Colors.red,
+      ));
+    }
   }
 
   Widget _buildEditField(

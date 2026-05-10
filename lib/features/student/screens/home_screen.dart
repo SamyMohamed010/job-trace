@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'job_details_screen.dart';
 import 'login_screen.dart';
+import 'profile_screen.dart';
 import '../../../app_localization.dart';
 import '../../widgets/language_toggle.dart';
 import '../widgets/notification_sheet.dart';
@@ -748,11 +749,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.pushAndRemoveUntil(
+              Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-                (route) => false,
-              );
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              ).then((_) => setState(() {}));
             },
             style: TextButton.styleFrom(
               backgroundColor: primaryBlueLight,

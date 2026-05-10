@@ -3,6 +3,7 @@ import 'complete_profile.dart';
 import '../../../core/student_service.dart';
 import '../../../app_localization.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/utils/validation_utils.dart';
 
 class StudentRegisterScreen extends StatefulWidget {
   const StudentRegisterScreen({super.key});
@@ -247,10 +248,14 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
           controller: controller,
           obscureText: !isVisible,
           validator: (value) {
+            bool isAr = appLocalization.locale.languageCode == 'ar';
+            if (!isConfirm) {
+              return ValidationUtils.validatePassword(value, isAr);
+            }
             if (value == null || value.isEmpty) {
               return texts['req'];
             }
-            if (isConfirm && value != _passwordController.text) {
+            if (value != _passwordController.text) {
               return texts['matchErr'];
             }
             return null;

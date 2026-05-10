@@ -3,6 +3,7 @@ import 'company_register_step2_screen.dart';
 import 'company_login_screen.dart';
 import '../../../app_localization.dart';
 import '../company_data.dart';
+import '../../../core/utils/validation_utils.dart';
 
 class CompanyRegisterScreen extends StatefulWidget {
   const CompanyRegisterScreen({super.key});
@@ -112,9 +113,8 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen> {
                   },
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter a password';
-                  if (value.length < 6) return 'Password must be at least 6 characters';
-                  return null;
+                  bool isAr = appLocalization.locale.languageCode == 'ar';
+                  return ValidationUtils.validatePassword(value, isAr);
                 },
               ),
               const SizedBox(height: 16),

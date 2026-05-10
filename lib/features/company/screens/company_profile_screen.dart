@@ -17,6 +17,8 @@ class CompanyProfileScreen extends StatefulWidget {
 }
 
 class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
+  bool _isOverviewExpanded = false;
+
   void _refresh() {
     setState(() {});
   }
@@ -166,9 +168,12 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                       children: [
                         const Icon(Icons.location_on, color: Colors.redAccent, size: 16),
                         const SizedBox(width: 4),
-                        Text(
-                          data.location,
-                          style: const TextStyle(color: Color(0xFF7E848E), fontSize: 14),
+                        Expanded(
+                          child: Text(
+                            data.location,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Color(0xFF7E848E), fontSize: 14),
+                          ),
                         ),
                       ],
                     ),
@@ -180,9 +185,12 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                       children: [
                         const Icon(Icons.language, color: Color(0xFF7E848E), size: 16),
                         const SizedBox(width: 4),
-                        Text(
-                          data.website,
-                          style: const TextStyle(color: Color(0xFF7E848E), fontSize: 14),
+                        Expanded(
+                          child: Text(
+                            data.website,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Color(0xFF7E848E), fontSize: 14),
+                          ),
                         ),
                       ],
                     ),
@@ -217,12 +225,25 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                           const SizedBox(height: 8),
                           Text(
                             data.overview,
+                            maxLines: _isOverviewExpanded ? 100 : 3,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 14,
                               color: Color(0xFF7E848E),
                               height: 1.5,
                             ),
                           ),
+                          if (data.overview.length > 100)
+                            GestureDetector(
+                              onTap: () => setState(() => _isOverviewExpanded = !_isOverviewExpanded),
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Text(
+                                  _isOverviewExpanded ? "See less" : "See more >",
+                                  style: const TextStyle(color: Color(0xFF229BD8), fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),

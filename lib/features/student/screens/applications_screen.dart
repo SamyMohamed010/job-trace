@@ -257,7 +257,12 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                     children: [
                       const Icon(Icons.calendar_today, size: 14, color: Color(0xFF9C27B0)),
                       const SizedBox(width: 8),
-                      Text("Date: \${app['interviewDate'] ?? 'TBD'}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF9C27B0))),
+                      Expanded(
+                        child: Text(
+                          'Date: ${app['interviewDate'] ?? 'TBD'}',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF9C27B0)),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 5),
@@ -265,7 +270,12 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                     children: [
                       const Icon(Icons.location_on, size: 14, color: Color(0xFF9C27B0)),
                       const SizedBox(width: 8),
-                      Expanded(child: Text("Location/Link: \${app['interviewLocation'] ?? 'TBD'}", style: const TextStyle(fontSize: 12, color: Colors.black87))),
+                      Expanded(
+                        child: Text(
+                          'Location/Link: ${app['interviewLocation'] ?? 'TBD'}',
+                          style: const TextStyle(fontSize: 12, color: Colors.black87),
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -328,6 +338,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
   }
 
   void _showNotificationsSheet(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -337,7 +348,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
       builder: (context) {
         return Container(
           padding: const EdgeInsets.all(24),
-          height: 400,
+          height: 420,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -351,29 +362,52 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
               ),
               const SizedBox(height: 20),
               Expanded(
-                child: ListView(
-                  children: [
-                    _buildNotificationItem(
-                      context,
-                      title: AppLocale.tr(context, "Application Accepted"),
-                      subtitle: AppLocale.tr(
-                        context,
-                        "Your application for Google has been accepted.",
-                      ),
-                      icon: Icons.remove_red_eye,
-                      time: "2h",
-                    ),
-                    _buildNotificationItem(
-                      context,
-                      title: AppLocale.tr(context, "New Job Alert"),
-                      subtitle: AppLocale.tr(
-                        context,
-                        "A new 'Flutter Developer' job was posted.",
-                      ),
-                      icon: Icons.work_outline,
-                      time: "5h",
-                    ),
-                  ],
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('notifications')
+                      .where('targetId', isEqualTo: user?.uid)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return Center(
+                        child: Text(
+                          AppLocale.tr(context, "No notifications"),
+                          style: const TextStyle(color: Color(0xFF7E848E)),
+                        ),
+                      );
+                    }
+                    final notifs = snapshot.data!.docs.toList();
+                    notifs.sort((a, b) {
+                      final aT = (a.data() as Map)['createdAt'] as Timestamp?;
+                      final bT = (b.data() as Map)['createdAt'] as Timestamp?;
+                      if (aT == null || bT == null) return 0;
+                      return bT.compareTo(aT);
+                    });
+                    return ListView.builder(
+                      itemCount: notifs.length,
+                      itemBuilder: (context, i) {
+                        final d = notifs[i].data() as Map<String, dynamic>;
+                        final status = d['status'] ?? '';
+                        IconData icon = Icons.notifications;
+                        if (status == 'Accepted') icon = Icons.check_circle_outline;
+                        else if (status == 'Rejected') icon = Icons.cancel_outlined;
+                        else if (status == 'Interview Scheduled') icon = Icons.event;
+                        else if (status == 'Under Review') icon = Icons.remove_red_eye;
+                        return _buildNotificationItem(
+                          context,
+                          title: d['title'] ?? 'Notification',
+                          subtitle: d['message'] ?? '',
+                          icon: icon,
+                          time: d['createdAt'] != null
+                              ? DateFormat('dd MMM').format((d['createdAt'] as Timestamp).toDate())
+                              : '',
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ],

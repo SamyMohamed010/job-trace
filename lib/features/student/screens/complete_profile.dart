@@ -96,8 +96,15 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     if (bytes == null) return null;
     try {
       final cloudName = 'dfeptodqc';
-      final uploadPreset = 'nszqbsrs';
-      final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/$resourceType/upload');
+      final uploadPreset = 'ml_default';
+
+      // Force raw for PDFs
+      String actualResourceType = resourceType;
+      if (fileName.toLowerCase().endsWith('.pdf')) {
+        actualResourceType = 'raw';
+      }
+
+      final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/$actualResourceType/upload');
       
       final request = http.MultipartRequest('POST', uri);
       request.fields['upload_preset'] = uploadPreset;
@@ -826,13 +833,13 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
                       String? cvUrl;
                       if (cvFileData != null && cvFileName != null) {
-                        cvUrl = await _uploadToCloudinary(cvFileData, cvFileName!, 'student_cvs', resourceType: 'auto');
+                        cvUrl = await _uploadToCloudinary(cvFileData, cvFileName!, 'student_cvs', resourceType: 'raw');
                         studentService.cvUrl = cvUrl;
                       }
 
                       String? verificationUrl;
                       if (verificationFileData != null && verificationFileName != null) {
-                        verificationUrl = await _uploadToCloudinary(verificationFileData, verificationFileName!, 'student_verifications', resourceType: 'auto');
+                        verificationUrl = await _uploadToCloudinary(verificationFileData, verificationFileName!, 'student_verifications', resourceType: 'raw');
                         studentService.verificationUrl = verificationUrl;
                         studentService.isVerified = true;
                       }

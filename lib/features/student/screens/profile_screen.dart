@@ -15,6 +15,7 @@ import '../../../app_localization.dart';
 import 'applications_screen.dart';
 import '../../../core/services/database_service.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/url_helper.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -94,56 +95,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _viewCV() async {
     bool isAr = appLocalization.locale.languageCode == 'ar';
+
+    // Priority 1: Cloudinary URL stored in Firestore
     if (studentService.cvUrl != null && studentService.cvUrl!.isNotEmpty) {
-      final uri = Uri.parse(studentService.cvUrl!);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
+      try {
+        // Add timestamp to bypass browser cache
+        String urlWithCacheBust = studentService.cvUrl!;
+        if (urlWithCacheBust.contains('?')) {
+          urlWithCacheBust += "&t=${DateTime.now().millisecondsSinceEpoch}";
+        } else {
+          urlWithCacheBust += "?t=${DateTime.now().millisecondsSinceEpoch}";
+        }
+        await openUrl(urlWithCacheBust);
+        return;
+      } catch (e) {
+        // fall through to local data
+      }
+    }
+
+    // Priority 2: In-memory file data (just selected, not yet saved)
+    if (studentService.cvFileData != null && studentService.cvFileData!.isNotEmpty) {
+      try {
+        if (kIsWeb) {
+          final String base64Content = base64Encode(studentService.cvFileData!);
+          final String fileName = studentService.cvFileName ?? "cv.pdf";
+          final String mimeType = fileName.endsWith(".pdf") ? "application/pdf" : "application/msword";
+          final String dataUri = 'data:$mimeType;base64,$base64Content';
+          final Uri uri = Uri.parse(dataUri);
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          final tempDir = await getTemporaryDirectory();
+          final fileName = studentService.cvFileName ?? "cv.pdf";
+          final file = File('${tempDir.path}/$fileName');
+          await file.writeAsBytes(studentService.cvFileData!);
+          await OpenFilex.open(file.path);
+        }
+        return;
+      } catch (e) {
+        _showCVPreviewDialog();
         return;
       }
     }
 
-    if (studentService.cvFileData == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isAr ? "لم يتم رفع سيرة ذاتية بعد" : "No CV uploaded yet",
-          ),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    try {
-      if (kIsWeb) {
-        final String base64Content = base64Encode(studentService.cvFileData!);
-        final String fileName = studentService.cvFileName ?? "cv.pdf";
-        final String mimeType = fileName.endsWith(".pdf")
-            ? "application/pdf"
-            : "application/msword";
-        final String dataUri = 'data:$mimeType;base64,$base64Content';
-
-        final Uri uri = Uri.parse(dataUri);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri);
-        } else {
-          _showCVPreviewDialog();
-        }
-      } else {
-        // Mobile/Desktop: Save to temp file and open
-        final tempDir = await getTemporaryDirectory();
-        final fileName = studentService.cvFileName ?? "cv.pdf";
-        final file = File('${tempDir.path}/$fileName');
-        await file.writeAsBytes(studentService.cvFileData!);
-
-        final result = await OpenFilex.open(file.path);
-        if (result.type != ResultType.done) {
-          _showCVPreviewDialog();
-        }
-      }
-    } catch (e) {
-      _showCVPreviewDialog();
-    }
+    // No CV found
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(isAr ? "لم يتم رفع سيرة ذاتية بعد" : "No CV uploaded yet"),
+        backgroundColor: Colors.orange,
+      ),
+    );
   }
 
   void _showCVPreviewDialog() {
@@ -265,7 +265,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           studentService.cvFileData,
           studentService.cvFileName ?? 'cv_${DateTime.now().millisecondsSinceEpoch}.pdf',
           'student_cvs',
-          resourceType: 'auto',
+          resourceType: 'raw',
         );
       }
 
@@ -275,7 +275,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           studentService.verificationFileData,
           studentService.verificationFileName ?? 'verification_${DateTime.now().millisecondsSinceEpoch}.pdf',
           'student_verifications',
-          resourceType: 'auto',
+          resourceType: 'raw',
         );
       }
 
@@ -287,6 +287,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         studentService.program = _programController.text;
         if (newProfileImageUrl != null) {
           studentService.profileImageUrl = newProfileImageUrl;
+          studentService.profileImageBytes = null;
+        }
+        if (newCvUrl != null) {
+          studentService.cvUrl = newCvUrl;
+          studentService.cvFileData = null;
+        }
+        if (newVerificationUrl != null) {
+          studentService.verificationUrl = newVerificationUrl;
+          studentService.verificationFileData = null;
         }
       });
 
@@ -325,9 +334,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (bytes == null) return null;
     try {
       final cloudName = 'dfeptodqc';
-      final uploadPreset = 'nszqbsrs';
+      final uploadPreset = 'ml_default';
+      
+      // Force raw for PDFs to bypass Cloudinary security restrictions on PDF delivery
+      String actualResourceType = resourceType;
+      if (fileName.toLowerCase().endsWith('.pdf')) {
+        actualResourceType = 'raw';
+      }
+
       final uri = Uri.parse(
-        'https://api.cloudinary.com/v1_1/$cloudName/$resourceType/upload',
+        'https://api.cloudinary.com/v1_1/$cloudName/$actualResourceType/upload',
       );
 
       final request = http.MultipartRequest('POST', uri);
@@ -729,105 +745,162 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickAndVerify() async {
+    bool isAr = appLocalization.locale.languageCode == 'ar';
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'doc', 'docx'],
         withData: true,
       );
-      if (result != null) {
-        setState(() {
-          studentService.cvFileName = result.files.single.name;
-          studentService.cvFileData = result.files.single.bytes;
-        });
-        await _trySaveVerificationIfComplete();
+      if (result == null) return;
+
+      final bytes = result.files.single.bytes;
+      final name = result.files.single.name;
+
+      setState(() {
+        studentService.cvFileName = name;
+        studentService.cvFileData = bytes;
+      });
+
+      // Show uploading indicator
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isAr ? "جاري رفع السيرة الذاتية..." : "Uploading CV..."),
+        duration: const Duration(seconds: 10),
+        backgroundColor: const Color(0xFF229BD8),
+      ));
+
+      // Upload to Cloudinary immediately
+      final cvUrl = await _uploadToCloudinary(
+        bytes,
+        'cv_${DateTime.now().millisecondsSinceEpoch}.pdf',
+        'student_cvs',
+        resourceType: 'raw',
+      );
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      if (cvUrl == null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(isAr ? "فشل رفع الملف، حاول مجدداً" : "Upload failed, please try again"),
+          backgroundColor: Colors.red,
+        ));
+        return;
       }
-    } catch (_) {}
+
+      // Save URL to Firestore immediately
+      setState(() => studentService.cvUrl = cvUrl);
+      final uid = AuthService().currentUid;
+      if (uid != null) {
+        await DatabaseService(uid: uid).updateUserData({
+          'cvUrl': cvUrl,
+          'cvFileName': name,
+        });
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isAr ? "✅ تم رفع السيرة الذاتية" : "✅ CV uploaded successfully"),
+        backgroundColor: Colors.green,
+      ));
+
+      // Check if both are now available → mark verified
+      await _tryMarkVerified();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isAr ? "حدث خطأ: $e" : "Error: $e"),
+        backgroundColor: Colors.red,
+      ));
+    }
   }
 
   Future<void> _pickVerificationAndSave() async {
+    bool isAr = appLocalization.locale.languageCode == 'ar';
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'jpg', 'png', 'jpeg'],
         withData: true,
       );
-      if (result != null) {
-        setState(() {
-          studentService.verificationFileName = result.files.single.name;
-          studentService.verificationFileData = result.files.single.bytes;
-        });
-        await _trySaveVerificationIfComplete();
-      }
-    } catch (_) {}
-  }
+      if (result == null) return;
 
-  Future<void> _trySaveVerificationIfComplete() async {
-    bool isAr = appLocalization.locale.languageCode == 'ar';
-    final bool hasCv = studentService.cvFileData != null || (studentService.cvUrl != null && studentService.cvUrl!.isNotEmpty);
-    final bool hasVerification = studentService.verificationFileData != null || (studentService.verificationUrl != null && studentService.verificationUrl!.isNotEmpty);
+      final bytes = result.files.single.bytes;
+      final name = result.files.single.name;
 
-    if (!hasCv || !hasVerification) return;
+      setState(() {
+        studentService.verificationFileName = name;
+        studentService.verificationFileData = bytes;
+      });
 
-    // Show loading snackbar
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(isAr ? "جاري رفع الملفات والتوثيق..." : "Uploading files and verifying..."),
-      duration: const Duration(seconds: 5),
-    ));
+      // Show uploading indicator
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isAr ? "جاري رفع إثبات القيد..." : "Uploading verification document..."),
+        duration: const Duration(seconds: 10),
+        backgroundColor: const Color(0xFF229BD8),
+      ));
 
-    try {
-      String? newCvUrl = studentService.cvUrl;
-      if (studentService.cvFileData != null) {
-        newCvUrl = await _uploadToCloudinary(
-          studentService.cvFileData,
-          studentService.cvFileName ?? 'cv_${DateTime.now().millisecondsSinceEpoch}.pdf',
-          'student_cvs',
-          resourceType: 'auto',
-        );
-        if (newCvUrl != null) {
-          studentService.cvUrl = newCvUrl;
-        }
+      // Upload to Cloudinary immediately
+      final verUrl = await _uploadToCloudinary(
+        bytes,
+        'verification_${DateTime.now().millisecondsSinceEpoch}.pdf',
+        'student_verifications',
+        resourceType: 'raw',
+      );
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      if (verUrl == null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(isAr ? "فشل رفع الملف، حاول مجدداً" : "Upload failed, please try again"),
+          backgroundColor: Colors.red,
+        ));
+        return;
       }
 
-      String? newVerificationUrl = studentService.verificationUrl;
-      if (studentService.verificationFileData != null) {
-        newVerificationUrl = await _uploadToCloudinary(
-          studentService.verificationFileData,
-          studentService.verificationFileName ?? 'verification_${DateTime.now().millisecondsSinceEpoch}.pdf',
-          'student_verifications',
-          resourceType: 'auto',
-        );
-        if (newVerificationUrl != null) {
-          studentService.verificationUrl = newVerificationUrl;
-        }
-      }
-
+      // Save URL to Firestore immediately
+      setState(() => studentService.verificationUrl = verUrl);
       final uid = AuthService().currentUid;
       if (uid != null) {
         await DatabaseService(uid: uid).updateUserData({
-          if (newCvUrl != null) 'cvUrl': newCvUrl,
-          if (newCvUrl != null) 'cvFileName': studentService.cvFileName,
-          if (newVerificationUrl != null) 'verificationUrl': newVerificationUrl,
-          if (newVerificationUrl != null) 'verificationFileName': studentService.verificationFileName,
-          'isVerified': true,
+          'verificationUrl': verUrl,
+          'verificationFileName': name,
         });
       }
 
-      setState(() {
-        studentService.isVerified = true;
-      });
-
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(isAr ? "✅ تم توثيق حسابك بنجاح!" : "✅ Account verified successfully!"),
+        content: Text(isAr ? "✅ تم رفع إثبات القيد" : "✅ Verification document uploaded"),
         backgroundColor: Colors.green,
       ));
+
+      // Check if both are now available → mark verified
+      await _tryMarkVerified();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(isAr ? "حدث خطأ أثناء التوثيق" : "Error during verification: $e"),
+        content: Text(isAr ? "حدث خطأ: $e" : "Error: $e"),
         backgroundColor: Colors.red,
       ));
     }
   }
+
+  Future<void> _tryMarkVerified() async {
+    bool isAr = appLocalization.locale.languageCode == 'ar';
+    final hasCv = studentService.cvUrl != null && studentService.cvUrl!.isNotEmpty;
+    final hasVerification = studentService.verificationUrl != null && studentService.verificationUrl!.isNotEmpty;
+
+    if (!hasCv || !hasVerification || studentService.isVerified) return;
+
+    try {
+      final uid = AuthService().currentUid;
+      if (uid != null) {
+        await DatabaseService(uid: uid).updateUserData({'isVerified': true});
+      }
+      setState(() => studentService.isVerified = true);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isAr ? "🎉 تم توثيق حسابك بنجاح! يمكنك الآن التقديم على الوظائف" : "🎉 Account verified! You can now apply for jobs."),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 4),
+      ));
+    } catch (_) {}
+  }
+
 
   Widget _buildEditField(
     TextEditingController controller, {

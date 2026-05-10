@@ -193,6 +193,21 @@ class CompanyJobApplicantsScreen extends StatelessWidget {
 
   Future<void> _updateStatus(BuildContext context, String appId, String studentId, String companyName, String newStatus, {String? interviewDate, String? interviewLocation}) async {
     try {
+      // Check current status to prevent duplicate updates
+      final currentDoc = await FirebaseFirestore.instance.collection('applications').doc(appId).get();
+      if (currentDoc.exists) {
+        final currentStatus = (currentDoc.data() as Map<String, dynamic>)['status'] ?? '';
+        if (currentStatus == newStatus) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Status is already "$newStatus" for this applicant.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          return;
+        }
+      }
+
       Map<String, dynamic> updateData = {'status': newStatus};
       if (interviewDate != null) updateData['interviewDate'] = interviewDate;
       if (interviewLocation != null) updateData['interviewLocation'] = interviewLocation;
@@ -206,10 +221,14 @@ class CompanyJobApplicantsScreen extends StatelessWidget {
         notifTitle = 'Interview Scheduled';
         notifMessage = 'An interview for $jobTitle has been scheduled on $interviewDate. Location/Link: $interviewLocation.';
       } else if (newStatus == 'Accepted') {
-        notifTitle = 'Application Accepted';
+        notifTitle = '🎉 Application Accepted';
         notifMessage = 'Congratulations! Your application for $jobTitle has been accepted by $companyName.';
       } else if (newStatus == 'Rejected') {
         notifTitle = 'Application Rejected';
+        notifMessage = 'Unfortunately, your application for $jobTitle was not selected by $companyName.';
+      } else if (newStatus == 'Under Review') {
+        notifTitle = 'Under Review';
+        notifMessage = '$companyName is reviewing your application for $jobTitle.';
       }
 
       await FirebaseFirestore.instance.collection('notifications').add({
@@ -219,12 +238,13 @@ class CompanyJobApplicantsScreen extends StatelessWidget {
         'message': notifMessage,
         'type': 'application_status',
         'status': newStatus,
+        'jobTitle': jobTitle,
         'createdAt': FieldValue.serverTimestamp(),
         'isRead': false,
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Application $newStatus")),
+        SnackBar(content: Text('Status updated to "$newStatus"'), backgroundColor: Colors.green),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

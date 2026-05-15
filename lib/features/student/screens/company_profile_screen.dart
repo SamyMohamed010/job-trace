@@ -80,14 +80,16 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: InkWell(
-                    onTap: () {
+                    onTap: () async {
+                      final Uri url = Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': location});
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    onLongPress: () {
                       setState(() {
                         _isLocationExpanded = !_isLocationExpanded;
                       });
-                    },
-                    onLongPress: () async {
-                      final Uri url = Uri.parse("https://www.google.com/maps/search/?api=1&query=$location");
-                      if (await canLaunchUrl(url)) await launchUrl(url);
                     },
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,

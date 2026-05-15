@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/student_service.dart';
 import '../../../app_localization.dart';
@@ -125,7 +126,16 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
               spacing: 10,
               alignment: WrapAlignment.center,
               children: [
-                _buildInfoChip(Icons.location_on, "${widget.location} (${widget.locationType})", Colors.red),
+                InkWell(
+                  onTap: () async {
+                    final Uri url = Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': widget.location});
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: _buildInfoChip(Icons.location_on, "${widget.location} (${widget.locationType})", Colors.red),
+                ),
                 _buildInfoChip(
                   Icons.monetization_on, 
                   widget.salaryFrom.isEmpty || widget.salaryFrom == "0"

@@ -35,9 +35,11 @@ class AnalyticsScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildTopStatCard("Total Companies", total.toString()),
-                  _buildTopStatCard("Approved", approved.toString()),
-                  _buildTopStatCard("Rejected", rejected.toString()),
+                  Expanded(child: _buildTopStatCard("Total Companies", total.toString())),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildTopStatCard("Approved", approved.toString())),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildTopStatCard("Rejected", rejected.toString())),
                 ],
               ),
           const SizedBox(height: 30),

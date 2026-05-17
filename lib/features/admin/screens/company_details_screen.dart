@@ -20,11 +20,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
   Future<void> _openUrl(String urlString) async {
     final Uri url = Uri.parse(urlString);
     try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        debugPrint("Could not launch $urlString");
-      }
+      await launchUrl(url, mode: LaunchMode.externalApplication);
     } catch (e) {
       debugPrint("Error launching URL: $e");
     }

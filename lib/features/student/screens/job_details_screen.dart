@@ -129,9 +129,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                 InkWell(
                   onTap: () async {
                     final Uri url = Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': widget.location});
-                    if (await canLaunchUrl(url)) {
-                      await launchUrl(url, mode: LaunchMode.externalApplication);
-                    }
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
                   },
                   borderRadius: BorderRadius.circular(20),
                   child: _buildInfoChip(Icons.location_on, "${widget.location} (${widget.locationType})", Colors.red),

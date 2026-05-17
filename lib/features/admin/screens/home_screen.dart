@@ -72,14 +72,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
-                isArabic
-                    ? _titles[_selectedIndex]["ar"]!
-                    : _titles[_selectedIndex]["en"]!,
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              Flexible(
+                child: Text(
+                  isArabic
+                      ? _titles[_selectedIndex]["ar"]!
+                      : _titles[_selectedIndex]["en"]!,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

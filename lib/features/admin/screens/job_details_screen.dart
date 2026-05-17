@@ -22,10 +22,10 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
       "https://www.google.com/maps/search/?api=1&query=$query",
     );
 
-    if (await canLaunchUrl(googleMapsUrl)) {
+    try {
       await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
-    } else {
-      debugPrint("Could not open the map.");
+    } catch (e) {
+      debugPrint("Could not open the map: $e");
     }
   }
 

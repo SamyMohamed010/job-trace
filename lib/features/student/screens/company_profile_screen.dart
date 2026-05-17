@@ -82,9 +82,7 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                   child: InkWell(
                     onTap: () async {
                       final Uri url = Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': location});
-                      if (await canLaunchUrl(url)) {
-                        await launchUrl(url, mode: LaunchMode.externalApplication);
-                      }
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
                     },
                     onLongPress: () {
                       setState(() {
